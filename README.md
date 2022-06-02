@@ -18,5 +18,10 @@
 
 ## Run detection
 ```shell
+# main
 roslaunch detector detect.launch 
+
+# other nodes
+rosrun detector client.py  # service to enable or disable the publisher
+rosrun detector pub_image.py  # test with video without using zed camera
 ```  
