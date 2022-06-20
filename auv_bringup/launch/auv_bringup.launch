@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+
+<launch>
+    
+    <!-- Initiate communication with Arduino -->
+    <node name="serial_node"        pkg="rosserial_python"      type="serial_node.py">
+    <param name="port"              type="string"               value="/dev/ttyACM0"/>
+    <param name="baud"              type="int"                  value="57600"/>
+    </node>
+
+    <!-- Detector -->
+    <include file="$(find detector)/launch/detect.launch">
+    </include>
+
+    <!-- Helper function -->
+    <node type="imu_filter.py" name="imu_filter" pkg="helper" args="-d $(find helper)/scripts/imu_filter.py"/>
+
+</launch>
