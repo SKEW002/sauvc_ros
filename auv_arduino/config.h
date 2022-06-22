@@ -3,7 +3,6 @@
 
 #include "ping1d.h"
 
-
 /**
  * Motor to Arduino Pin Connection.
  */
@@ -33,7 +32,7 @@
 # define ESC_INPUT_FOR_STOP_SIGNAL int(1500)
 
 /**
- * ESC Input Value of motors for each motion.
+ * ESC Input Value of motors for each motion. (for reference only)
  */
 # define MOTOR_AND_ESC_INPUT_FOR_FORWARD {MOTOR_NO_1_PIN, 1700}, \
                                          {MOTOR_NO_2_PIN, 1700}, \
@@ -138,8 +137,6 @@
  */
 static const uint8_t arduinoRxPin = 19; //Serial1 rx
 static const uint8_t arduinoTxPin = 18; //Serial1 tx
-
-static Ping1D ping { Serial1 };
 
 static const uint8_t ledPin = 13;
 # endif
