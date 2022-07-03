@@ -58,20 +58,20 @@ void test_motor(){
 /**
  * Forward, backward, translate and z axis rotation.
  */
-void horizontal_movement(int speed1, int speed2, int speed3, int speed4){
-    thruster1.writeMicroseconds(speed1);
-    thruster2.writeMicroseconds(speed2);
-    thruster3.writeMicroseconds(speed3);
-    thruster4.writeMicroseconds(speed4);
+void horizontal_movement(int *pwm){
+    thruster1.writeMicroseconds(pwm[0]);
+    thruster2.writeMicroseconds(pwm[1]);
+    thruster3.writeMicroseconds(pwm[2]);
+    thruster4.writeMicroseconds(pwm[3]);
 }
 
 
 /**
  * Surface or submerge.
  */
-void vertical_movement(int speed5, int speed6, int speed7, int speed8){
-    thruster5.writeMicroseconds(speed5);
-    thruster6.writeMicroseconds(speed6);
-    thruster7.writeMicroseconds(speed7);
-    thruster8.writeMicroseconds(speed8);
+void vertical_movement(int *pwm){
+    thruster5.writeMicroseconds(pwm[0]);
+    thruster6.writeMicroseconds(pwm[1]);
+    thruster7.writeMicroseconds(pwm[2]);
+    thruster8.writeMicroseconds(pwm[3]);
 }

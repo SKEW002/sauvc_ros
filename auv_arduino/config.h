@@ -2,7 +2,7 @@
 # define SAUVC2022_CONFIG_H
 
 #include "ping1d.h"
-
+#include <stdio.h>
 /**
  * Motor to Arduino Pin Connection.
  */
