@@ -1,38 +1,24 @@
 #!/usr/bin/env python
 import rospy
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32MultiArray
 from sensor_msgs.msg import Imu
-from math import pi
-import time
 
 class IMU_Filter:
     def __init__(self, sample):
         rospy.Subscriber('/zedm/zed_node/imu/data',Imu , self.imuCallback)
         self.start_imu = False
 
-        self.ang_vel_pub = rospy.Publisher('/cmd_out/ang_vel', Float32 , queue_size=1)
+        self.imu_pub = rospy.Publisher('/cmd_out/imu_data', Float32MultiArray , queue_size=1)
 
-        self.gx_pub = rospy.Publisher('/cmd_out/gx', Float32 , queue_size=1)
-        self.gy_pub = rospy.Publisher('/cmd_out/gy', Float32 , queue_size=1)
-        self.oz_pub = rospy.Publisher('/cmd_out/oz', Float32 , queue_size=1)
-        self.ow_pub = rospy.Publisher('/cmd_out/ow', Float32 , queue_size=1)
 
-        
-        self.ang_vel_msg = Float32()
-        self.ang_vel_array = [0 for i in range(sample)]
-        self.gx_msg = Float32()
-        self.gy_msg = Float32()
-        self.oz_msg = Float32()
-        self.ow_msg = Float32()
+        self.imu_data = [[0 for i in range(sample)] for j in range(6)]
+
+        self.imu_msg = Float32MultiArray()
+        self.imu_msg.data = [0 for i in range(6)]
 
 
     def imuCallback(self, msg):
-        self.ang_vel = int(msg.angular_velocity.z * 180 / pi)
-        self.gx_msg.data = msg.linear_acceleration.x
-        self.gy_msg.data = msg.linear_acceleration.y
-
-        self.oz_msg.data = msg.orientation.z
-        self.ow_msg.data = msg.orientation.w
+        self.raw_imu = [msg.linear_acceleration.x, msg.linear_acceleration.y, msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w]
 
         self.start_imu = True
 
@@ -44,14 +30,18 @@ class IMU_Filter:
         alpha = 0.125
         denominator = 0
 
-        for i in range(len(self.ang_vel_array)):
-            denominator += (1-alpha)**i
+        for j in range(6):
+            for i in range(len(self.imu_data[j])):
+                denominator += (1-alpha)**i
 
-        
-        for i in range(len(self.ang_vel_array)):
-            ema += ((self.ang_vel_array[len(self.ang_vel_array) - i - 1]) *(1-alpha)**i) / denominator
+            
+            for i in range(len(self.imu_data[j])):
+                ema += ((self.imu_data[j][len(self.imu_data[j]) - i - 1]) *(1-alpha)**i) / denominator
 
-        return ema
+            self.imu_msg.data[j] = ema
+            
+        self.imu_msg.data = self.raw_imu
+
 
 
 if __name__ == '__main__':
@@ -65,17 +55,13 @@ if __name__ == '__main__':
     while not rospy.is_shutdown(): 
         if imu_filter.start_imu:
 
-            # if imu_index == sample:
-            #     imu_filter.ang_vel_msg.data = imu_filter.filter()
-            #     imu_filter.ang_vel_pub.publish(imu_filter.ang_vel_msg)
-            #     imu_index = 0
-            # else:
-            #     imu_filter.ang_vel_array[imu_index] = imu_filter.ang_vel
-            #     imu_index += 1
-
-            imu_filter.gx_pub.publish(imu_filter.gx_msg)
-            imu_filter.gy_pub.publish(imu_filter.gy_msg)
-            imu_filter.oz_pub.publish(imu_filter.oz_msg)
-            imu_filter.ow_pub.publish(imu_filter.ow_msg)
+            if imu_index == sample:
+                imu_filter.filter()
+                imu_filter.imu_pub.publish(imu_filter.imu_msg)
+                imu_index = 0
+            else:
+                for j in range(6):
+                    imu_filter.imu_data[j][imu_index] = imu_filter.raw_imu[j]
+                imu_index += 1
 
             rate.sleep()
