@@ -18,7 +18,7 @@ def callback(BoundingBoxes):
 '''
 
 def talker():
-	pub = rospy.Publisher('/zed2/zed_node/left/image_rect_color', Image, queue_size = 10)
+	pub = rospy.Publisher('/zedm/zed_node/left/image_rect_color', Image, queue_size = 10)
 	rospy.init_node('image', anonymous = False)
 	rate = rospy.Rate(100)
 	while not rospy.is_shutdown():
