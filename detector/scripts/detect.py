@@ -29,8 +29,8 @@ class Detection:
         self.target_angle_msg = Float32()
 
         self.start_image = False
-        self.start_depth = False
-        self.start_angle = False
+        self.start_depth = True
+        self.start_angle = True
 
         rospy.Subscriber('/zedm/zed_node/left/image_rect_color', Image, self.image_callback)
         rospy.Subscriber('/zedm/zed_node/depth/depth_registered', Image, self.depth_callback)
@@ -49,6 +49,7 @@ class Detection:
         self.y1 = 0
         self.obj = 30
         self.frame_num = 0
+        self.current_angle = 0
     
     def current_angle_callback(self, msg):
         self.current_angle = msg.data

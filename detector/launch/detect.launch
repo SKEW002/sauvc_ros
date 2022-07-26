@@ -8,6 +8,6 @@
         <param name="weights_path"              value="$(arg weights_path)"/>
     </node>
 
-    <include file="$(find zed_wrapper)/launch/zedm.launch">
-    </include>
+    <!--include file="$(find zed_wrapper)/launch/zedm.launch">
+    </include-->
 </launch>
