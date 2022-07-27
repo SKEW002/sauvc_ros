@@ -1,6 +1,7 @@
 #include "ping_sonar.h"
   
 void initialize_ping_sonar(){
+  Serial1.begin(115200);
   while (!ping.initialize()) {
     Serial.println("\nPing device failed to initialize!");
     Serial.println("Are the Ping rx/tx wired correctly?");

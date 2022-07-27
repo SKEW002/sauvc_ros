@@ -12,6 +12,11 @@
     <include file="$(find detector)/launch/detect.launch">
     </include>
 
+    <!-- Control -->
+    <include file="$(find sauvc_app)/launch/control.launch">
+    </include>
+
+
     <!-- Helper function -->
     <node type="imu_filter.py" name="imu_filter" pkg="helper" args="-d $(find helper)/scripts/imu_filter.py"/>
 

@@ -44,7 +44,7 @@ ros::Subscriber<std_msgs::Int16MultiArray> control_sub("/cmd_out/pwm", &controlC
 
 
 
-ros::Publisher depth_pub("depth", &depth_msg);
+ros::Publisher depth_pub("/cmd_out/depth", &depth_msg);
 
 
 void transit_state () {
@@ -60,12 +60,13 @@ void transit_state () {
 
 
 void setup() {
-
+  
   Serial.begin(57600);
   Serial.println("Ready...");
   
   register_motor();
   stop_operation();
+  initialize_ping_sonar();
   delay(1000*5);
 
   pinMode(E_STOP_PIN, INPUT);
@@ -82,12 +83,10 @@ void setup() {
 void loop() {
 
   nh.spinOnce();
-  
-  nh.loginfo("start");
-  
+    
   horizontal_movement(hori_pwm);
   vertical_movement(vert_pwm);
-  
+  depth_msg.data = get_depth();
   depth_pub.publish(&depth_msg);
   delay(100);
 

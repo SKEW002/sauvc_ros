@@ -2,9 +2,7 @@
 
 # ros import
 import rospy
-from std_msgs.msg import Float32MultiArray
-from std_msgs.msg import Int16MultiArray
-from std_msgs.msg import Int16
+from std_msgs.msg import Float32MultiArray, Float32, Int16MultiArray, Int16
 from sensor_msgs.msg import Imu
 
 
@@ -14,11 +12,13 @@ import time
 class Control:
     def __init__(self):
         rospy.Subscriber('/cmd_out/imu_data',Float32MultiArray , self.imuCallback)
-        rospy.Subscriber('/depth',Int16 , self.depthCallback)
+        rospy.Subscriber('/cmd_out/depth',Int16 , self.depthCallback)
+        rospy.Subscriber('/cmd_out/target_angle',Float32 , self.targetAngleCallback)
 
         self.pwm_pub = rospy.Publisher("/cmd_out/pwm", Int16MultiArray, queue_size=10)
-        self.angle_pub = rospy.Publisher("/cmd_out/current_angle", Int16MultiArray, queue_size=10)
+        self.angle_pub = rospy.Publisher("/cmd_out/current_angle", Float32, queue_size=10)
 
+        self.angle_msg = Float32()
         self.pwm_msg = Int16MultiArray()
 
         #self.pwm_array = [1,2,3,4,5,6,7,8]   # test
@@ -37,11 +37,15 @@ class Control:
         self.stable = False
 
         self.start_imu = False
-
+        self.start_angle = False
 
         self.start_depth = True # set true for testing
         self.depth = 0.25 # for testing
 
+
+    def targetAngleCallback(self, msg):
+        self.target_gamma = msg.data
+        self.start_angle = True
 
     def imuCallback(self, msg):
         self.gx = msg.data[0]
@@ -50,7 +54,10 @@ class Control:
         # self.oz = msg.orientation.z
         # self.ow = msg.orientation.w
 
-        self.alpha, self.beta, self.gamma = self.quaternion_to_euler(msg.data[2], msg.data[3], msg.data[4], msg.data[5])  # x,y,z,w
+        _, _, self.actual_gamma = self.quaternion_to_euler(msg.data[2], msg.data[3], msg.data[4], msg.data[5])  # x,y,z,w
+        self.angle_msg.data = self.actual_gamma
+        self.angle_pub.publish(self.angle_msg)
+
         self.start_imu = True
 
 
@@ -113,38 +120,38 @@ class Control:
 
 
 
-    def move(self, motion, angle):
-        if self.motion == "forward":
+    def move(self, motion="forward"):
+        if motion == "forward":
             direction_to_compensate, error = self._compute_forward_movement_error()
-            self.pwm[0] = self._compute_stabilised_speed("1", error, direction_to_compensate)
-            self.pwm[1] = self._compute_stabilised_speed("2", error, direction_to_compensate)
+            self.pwm[0] = self._compute_stabilised_speed(1, error, direction_to_compensate)
+            self.pwm[1] = self._compute_stabilised_speed(2, error, direction_to_compensate)
 
 
     def _compute_forward_movement_error(self):
         """Compute the forward movement error's magnitude and direction."""
-        if (self._actual_euler["gamma"] >= 0 and self._target_euler["gamma"] >= 0) or (self._actual_euler["gamma"] < 0 and self._target_euler["gamma"] < 0):
-            error = math.fabs(self._target_euler["gamma"] - self._actual_euler["gamma"])
+        if (self.actual_gamma >= 0 and self.target_gamma >= 0) or (self.actual_gamma < 0 and self.target_gamma < 0):
+            error = math.fabs(self.target_gamma - self.actual_gamma)
 
-            if self._target_euler["gamma"] > self._actual_euler["gamma"]:
+            if self.target_gamma > self.actual_gamma:
                 direction_to_compensate = "CCW"
 
             else:
                 direction_to_compensate = "CW"
 
         else:
-            if math.fabs(self._actual_euler["gamma"]) > 90 and math.fabs(self._target_euler["gamma"]) > 90:
-                error = math.fabs(180 - math.fabs(self._target_euler["gamma"])) + math.fabs(180 - math.fabs(self._actual_euler["gamma"]))
+            if math.fabs(self.actual_gamma) > 90 and math.fabs(self.target_gamma) > 90:
+                error = math.fabs(180 - math.fabs(self._target_euler["gamma"])) + math.fabs(180 - math.fabs(self.actual_gamma))
 
-                if self._target_euler["gamma"] < self._actual_euler["gamma"]:
+                if self.target_gamma < self.actual_gamma:
                     direction_to_compensate = "CCW"
 
                 else:
                     direction_to_compensate = "CW"
 
             else:
-                error = math.fabs(self._target_euler["gamma"]) + math.fabs(self._actual_euler["gamma"])
+                error = math.fabs(self.target_gamma) + math.fabs(self.actual_gamma)
 
-                if self._target_euler["gamma"] > self._actual_euler["gamma"]:
+                if self.target_gamma > self.actual_gamma:
                     direction_to_compensate = "CCW"
 
                 else:
@@ -157,9 +164,9 @@ class Control:
 
     def _compute_stabilised_speed(self, thruster_id, error, direction_to_compensate):
         """Compute the stabilised speed from the controller."""
-        if (thruster_id == "1" and direction_to_compensate == "CW") or (thruster_id == "2" and direction_to_compensate == "CCW"):
+        if (thruster_id == 1 and direction_to_compensate == "CW") or (thruster_id == 2 and direction_to_compensate == "CCW"):
             error = -1*error
-        return int(self._thrusters_actual_speed[thruster_id] + self._P * error)
+        return int(self.pwm[thruster_id - 1] + self._P * error)
 
 
     def quaternion_to_euler(self, x, y, z, w):
