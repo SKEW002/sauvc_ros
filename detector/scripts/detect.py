@@ -2,7 +2,7 @@
 
 # ros import
 import rospy
-from std_msgs.msg import Float32, Int16MultiArray
+from std_msgs.msg import Float32, Int16MultiArray, String
 from sensor_msgs.msg import Image
 from std_srvs.srv import SetBool, SetBoolResponse
 from cv_bridge import CvBridge, CvBridgeError
@@ -30,24 +30,24 @@ class Detection:
 
         self.start_image = False
         self.start_depth = True
-        self.start_angle = True
+        self.start_angle = False
 
         rospy.Subscriber('/zedm/zed_node/left/image_rect_color', Image, self.image_callback)
         rospy.Subscriber('/zedm/zed_node/depth/depth_registered', Image, self.depth_callback)
-
         rospy.Subscriber('/cmd_out/current_angle', Float32, self.current_angle_callback)
 
-        self.pub_the_msg = True 
-
         self.pub_target_angle = rospy.Publisher('/cmd_out/target_angle', Float32, queue_size=10)
+        self.pub_motion = rospy.Publisher('/cmd_out/motion', String, queue_size=10)
+        self.motion_msg = String()
 
         self.start_service = rospy.Service('detection_service', SetBool, self.trigger_publish)
+        self.pub_the_msg = True 
 
         self.x0 = 0
         self.y0 = 0
         self.x1 = 0
         self.y1 = 0
-        self.obj = 30
+        self.obj = 10
         self.frame_num = 0
         self.current_angle = 0
     
@@ -62,11 +62,17 @@ class Detection:
 
     def depth_callback(self, data):
         self.depth_image = self.br.imgmsg_to_cv2(data, desired_encoding="32FC1")
+        self.depth_array = np.array(self.depth_image, dtype=np.float32)
+        
+        u = 672//2
+        v = 376//2
+
+
         self.start_depth = True
 
 
     def inference(self):
-            
+        self.motion_msg.data = " ROTATELEFT"
         results = self.model(self.bgr_image, size=640)  # includes NMS
         outputs = results.xyxy[0].cpu()
         if len(outputs) > 0:
@@ -78,13 +84,14 @@ class Detection:
                 self.obj = int(outputs[i][5]) #object number
                 self.center = ((self.x0+self.x1)//2,(self.y0+self.y1)//2)
 
+                if self.obj == 0: # qualification gate
+                    self.motion_msg.data = " FORWARD"
+
                 self.bgr_image = cv2.circle(self.bgr_image, [self.center[0], self.center[1]], 2,(0,0,255),2)
 
                 if self.pub_the_msg == True:
                     # self.get_distance()
-                    cv2.rectangle(self.bgr_image,(self.x0, self.y0),(self.x1,self.y1),(0,255,0),3)
-
-            cv2.imshow("frame",self.bgr_image)  
+                    cv2.rectangle(self.bgr_image,(self.x0, self.y0),(self.x1,self.y1),(0,255,0),3)  
         
             try:
                 target_angle = atan((672.0/2 - self.center[0]) / self.center[1]) * 180.0/3.14159; # 672x376 ################################################## check
@@ -95,9 +102,11 @@ class Detection:
             except ZeroDivisionError:
                 print(self.center)
 
-            if cv2.waitKey(1) == ord('q'):  # q to quit
-                cv2.destroyAllWindows()
-                raise StopIteration  
+        self.pub_motion.publish(self.motion_msg)
+        cv2.imshow("frame",self.bgr_image)
+        if cv2.waitKey(1) == ord('q'):  # q to quit
+            cv2.destroyAllWindows()
+            raise StopIteration  
 
             
 
@@ -105,17 +114,17 @@ class Detection:
     def trigger_publish(self, request):
         if request.data:
             self.pub_the_msg = True
-            return SetBoolResponse(True, 'Publishing data...')
+            return SetBoolResponse(True, "Publishing data...")
         else:
             self.pub_the_msg = False
-            return SetBoolResponse(False, 'Keep Quiet...')
+            return SetBoolResponse(False, "Keep Quiet...")
 
 
     def get_distance(self):
         self.depth_array = np.array(self.depth_image, dtype=np.float32)
 
-        u = (self.x0 + self.x1)//2 
-        v = (self.y0 + self.y1)//2
+        # u = (self.x0 + self.x1)//2 
+        # v = (self.y0 + self.y1)//2
 
         # print(self.depth_array[v,u])
         if isnan(self.depth_array[v,u]):
