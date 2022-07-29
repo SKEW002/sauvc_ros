@@ -66,7 +66,7 @@ void setup() {
   
   register_motor();
   stop_operation();
-  initialize_ping_sonar();
+  //initialize_ping_sonar();
   delay(1000*5);
 
   pinMode(E_STOP_PIN, INPUT);
@@ -88,17 +88,8 @@ void loop() {
   vertical_movement(vert_pwm);
   depth_msg.data = get_depth();
   depth_pub.publish(&depth_msg);
+  //nh.loginfo("Start");
   delay(100);
 
-//  if (state == HIGH) {
-//    stop_operation();
-//    Serial.println("STOP!");
-//  }
-//  
-//  else if (state == LOW){
-//    Serial.println("GO!");
-//    forward();
-//    up();
-//  }
   
 }

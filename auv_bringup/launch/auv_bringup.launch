@@ -8,6 +8,10 @@
     <param name="baud"              type="int"                  value="57600"/>
     </node>
 
+    <!-- ZED mini camera -->
+    <include file="$(find zed_wrapper)/launch/zedm.launch">
+    </include>
+
     <!-- Detector -->
     <include file="$(find detector)/launch/detect.launch">
     </include>

@@ -2,7 +2,7 @@
 
 # ros import
 import rospy
-from std_msgs.msg import Float32MultiArray, Float32, Int16MultiArray, Int16
+from std_msgs.msg import Float32MultiArray, Float32, Int16MultiArray, Int16, String
 from sensor_msgs.msg import Imu
 
 
@@ -14,13 +14,17 @@ class Control:
         rospy.Subscriber('/cmd_out/imu_data',Float32MultiArray , self.imuCallback)
         rospy.Subscriber('/cmd_out/depth',Int16 , self.depthCallback)
         rospy.Subscriber('/cmd_out/target_angle',Float32 , self.targetAngleCallback)
+        rospy.Subscriber('/cmd_out/motion',String , self.motionCallback)
 
         self.pwm_pub = rospy.Publisher("/cmd_out/pwm", Int16MultiArray, queue_size=10)
         self.angle_pub = rospy.Publisher("/cmd_out/current_angle", Float32, queue_size=10)
 
         self.angle_msg = Float32()
         self.pwm_msg = Int16MultiArray()
-
+        self.target_alpha = 0
+        self.target_beta = 0
+        self.target_gamma = 0
+        self.motion = []
         #self.pwm_array = [1,2,3,4,5,6,7,8]   # test
 
         self.max_pwm = 1700
@@ -29,8 +33,8 @@ class Control:
         self.max_depth = 0.3
         self.min_depth = 0.2
 
-        self.kp = 25
-        self._P = 25
+        self.kp = 20
+        self._P = 20
 
         self.pwm = [1500 for i in range(8)]  # thruster 1-8
 
@@ -54,10 +58,12 @@ class Control:
         # self.oz = msg.orientation.z
         # self.ow = msg.orientation.w
 
-        _, _, self.actual_gamma = self.quaternion_to_euler(msg.data[2], msg.data[3], msg.data[4], msg.data[5])  # x,y,z,w
+        self.actual_alpha, self.actual_beta, self.actual_gamma = self.quaternion_to_euler(msg.data[2], msg.data[3], msg.data[4], msg.data[5])  # x,y,z,w
+
+        print(self.actual_alpha, self.actual_beta)
+
         self.angle_msg.data = self.actual_gamma
         self.angle_pub.publish(self.angle_msg)
-
         self.start_imu = True
 
 
@@ -65,16 +71,18 @@ class Control:
         self.depth = float(msg.data / 100)
         self.start_depth = True
 
+    def motionCallback(self, msg):
+        self.motion = msg.data.split()
 
     def balance(self):
         tol = 0.4
-        if abs(self.gx) > tol or abs(self.gy) > tol:
+        if abs(self.actual_beta) > self.target_beta or abs(self.actual_alpha) > self.target_alpha:
             self.stable = False
-            if abs(self.gx) > tol:
-                self.pwm[4] -= int(self.gx * self.kp)
-                self.pwm[5] -= int(self.gx * self.kp)
-                self.pwm[6] += int(self.gx * self.kp)
-                self.pwm[7] += int(self.gx * self.kp)
+            if abs(self.actual_beta) > self.target_beta:
+                self.pwm[4] -= int((self.actual_beta - self.target_beta) * self.kp)
+                self.pwm[5] -= int((self.actual_beta - self.target_beta) * self.kp)
+                self.pwm[6] += int((self.actual_beta - self.target_beta) * self.kp)
+                self.pwm[7] += int((self.actual_beta - self.target_beta) * self.kp)
 
             # elif self.gx < -0.1:
             #     self.pwm_5 += 10
@@ -83,11 +91,11 @@ class Control:
             #     self.pwm_8 -= 10
 
 
-            if abs(self.gy) > tol:
-                self.pwm[4] -= int(self.gy * self.kp)
-                self.pwm[5] += int(self.gy * self.kp)
-                self.pwm[6] -= int(self.gy * self.kp)
-                self.pwm[7] += int(self.gy * self.kp)
+            if abs(self.actual_alpha) > self.target_alpha:
+                self.pwm[4] -= int((self.actual_alpha - self.target_alpha) * self.kp)
+                self.pwm[5] += int((self.actual_alpha - self.target_alpha) * self.kp)
+                self.pwm[6] -= int((self.actual_alpha - self.target_alpha) * self.kp)
+                self.pwm[7] += int((self.actual_alpha - self.target_alpha) * self.kp)
 
             # elif self.gy < -0.1:
             #     self.pwm_5 += 10
@@ -120,11 +128,13 @@ class Control:
 
 
 
-    def move(self, motion="forward"):
-        if motion == "forward":
+    def move(self, motion="FORWARD"):
+        if motion == "FORWARD":
             direction_to_compensate, error = self._compute_forward_movement_error()
             self.pwm[0] = self._compute_stabilised_speed(1, error, direction_to_compensate)
             self.pwm[1] = self._compute_stabilised_speed(2, error, direction_to_compensate)
+            self.pwm[2] = 1700
+            self.pwm[3] = 1700
 
 
     def _compute_forward_movement_error(self):
@@ -169,6 +179,7 @@ class Control:
         return int(self.pwm[thruster_id - 1] + self._P * error)
 
 
+
     def quaternion_to_euler(self, x, y, z, w):
         t0 = +2.0 * (w * x + y * z)
         t1 = +1.0 - 2.0 * (x * x + y * y)
@@ -180,7 +191,8 @@ class Control:
         t3 = +2.0 * (w * z + x * y)
         t4 = +1.0 - 2.0 * (y * y + z * z)
         gamma = math.atan2(t3, t4) * 180 / math.pi
-        return alpha, beta, gamma
+        return alpha, -beta, gamma
+
 
 
     def publish_pwm(self):
@@ -195,23 +207,6 @@ class Control:
         self.pwm_pub.publish(self.pwm_msg)
 
 
-    def filter(self, imu_data):
-        '''
-        Exponential Moving Average (EMA)
-        '''
-
-        ema = 0
-        alpha = 0.125
-        denominator = 0
-
-        for i in range(len(imu_data)):
-            denominator += (1-alpha)**i
-
-        
-        for i in range(len(imu_data)):
-            ema += ((imu_data[len(imu_data) - i - 1]) *(1-alpha)**i) / denominator
-
-        return ema
 
 
 if __name__ == '__main__':
@@ -221,5 +216,6 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         if controller.start_imu and controller.start_depth:
             controller.balance()
+            controller.move()
             controller.publish_pwm()
         rate.sleep()
