@@ -48,13 +48,8 @@ ros::Publisher depth_pub("/cmd_out/depth", &depth_msg);
 
 
 void transit_state () {
-  if(state_count >= 100){
-    state = !state;
-    state_count = 0;
-  }
-  else{
-    state_count++;
-  }
+  state = !state;
+
 }
 
 

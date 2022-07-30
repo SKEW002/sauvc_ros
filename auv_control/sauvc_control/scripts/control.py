@@ -60,7 +60,7 @@ class Control:
 
         self.actual_alpha, self.actual_beta, self.actual_gamma = self.quaternion_to_euler(msg.data[2], msg.data[3], msg.data[4], msg.data[5])  # x,y,z,w
 
-        print(self.actual_alpha, self.actual_beta)
+        # print(self.actual_alpha, self.actual_beta)
 
         self.angle_msg.data = self.actual_gamma
         self.angle_pub.publish(self.angle_msg)
