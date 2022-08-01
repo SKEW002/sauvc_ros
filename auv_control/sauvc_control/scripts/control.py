@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 # ros import
+from typing import Any
+
 import rospy
 from std_msgs.msg import Float32MultiArray, Float32, Int16MultiArray, Int16, String
 from sensor_msgs.msg import Imu
@@ -24,6 +26,8 @@ class Control:
         self.target_alpha = 0
         self.target_beta = 0
         self.target_gamma = 0
+        self.prev_roll_angle_error = 0
+        self.prev_pitch_angle_error = 0
         self.motion = []
         #self.pwm_array = [1,2,3,4,5,6,7,8]   # test
 
@@ -34,6 +38,7 @@ class Control:
         self.min_depth = 0.2
 
         self.kp = 20
+        self.kd = 10
         self._P = 20
 
         self.pwm = [1500 for i in range(8)]  # thruster 1-8
@@ -75,35 +80,35 @@ class Control:
         self.motion = msg.data.split()
 
     def balance(self):
-        tol = 0.4
-        if abs(self.actual_beta) > self.target_beta or abs(self.actual_alpha) > self.target_alpha:
-            self.stable = False
-            if abs(self.actual_beta) > self.target_beta:
-                self.pwm[4] -= int((self.actual_beta - self.target_beta) * self.kp)
-                self.pwm[5] -= int((self.actual_beta - self.target_beta) * self.kp)
-                self.pwm[6] += int((self.actual_beta - self.target_beta) * self.kp)
-                self.pwm[7] += int((self.actual_beta - self.target_beta) * self.kp)
+        error_tolerance = 0.4
+        roll_angle_error  = self.actual_alpha - self.target_alpha
+        pitch_angle_error = self.actual_beta - self.target_beta
+        roll_angle_error_difference = roll_angle_error - self.prev_roll_angle_error
+        pitch_angle_error_difference = pitch_angle_error - self.prev_pitch_angle_error
+        self.prev_roll_angle_error = roll_angle_error
+        self.prev_pitch_angle_error = pitch_angle_error
 
-            # elif self.gx < -0.1:
-            #     self.pwm_5 += 10
-            #     self.pwm_6 += 10
-            #     self.pwm_7 -= 10
-            #     self.pwm_8 -= 10
+        self.pwm[4] = 1500
+        self.pwm[5] = 1500
+        self.pwm[6] = 1500
+        self.pwm[7] = 1500
 
+        if abs(roll_angle_error) > error_tolerance or abs(pitch_angle_error) > error_tolerance:
+            if abs(roll_angle_error) > error_tolerance:
+                roll_difference = int(roll_angle_error * self.kp - roll_angle_error_difference * self.kd)
+                self.pwm[4] -= roll_difference
+                self.pwm[5] -= roll_difference
+                self.pwm[6] += roll_difference
+                self.pwm[7] += roll_difference
 
-            if abs(self.actual_alpha) > self.target_alpha:
-                self.pwm[4] -= int((self.actual_alpha - self.target_alpha) * self.kp)
-                self.pwm[5] += int((self.actual_alpha - self.target_alpha) * self.kp)
-                self.pwm[6] -= int((self.actual_alpha - self.target_alpha) * self.kp)
-                self.pwm[7] += int((self.actual_alpha - self.target_alpha) * self.kp)
+            if abs(pitch_angle_error) > error_tolerance:
+                pitch_difference = int(pitch_angle_error * self.kp - pitch_angle_error_difference * self.kd)
+                self.pwm[4] -= pitch_difference
+                self.pwm[5] += pitch_difference
+                self.pwm[6] -= pitch_difference
+                self.pwm[7] += pitch_difference
 
-            # elif self.gy < -0.1:
-            #     self.pwm_5 += 10
-            #     self.pwm_6 -= 10
-            #     self.pwm_7 += 10
-            #     self.pwm_8 -= 10
         else:
-            self.stable = True
             if self.depth < self.min_depth:
                 for i in range(4):
                     self.pwm[i+4] += int((self.min_depth - self.depth) * self.kp)
@@ -111,7 +116,6 @@ class Control:
             elif self.depth > self.max_depth:
                 for i in range(4):
                     self.pwm[i+4] -= int((self.depth - self.max_depth) * self.kp)
-
 
 
     def check_limit(self):
