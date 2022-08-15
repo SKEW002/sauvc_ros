@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+
+<launch>
+    
+    <!-- Initiate communication with Arduino -->
+    <node name="serial_node"        pkg="rosserial_python"      type="serial_node.py">
+    <param name="port"              type="string"               value="/dev/ttyACM0"/>
+    <param name="baud"              type="int"                  value="57600"/>
+    </node>
+
+    <!-- ZED mini camera -->
+    <include file="$(find zed_wrapper)/launch/zedm.launch">
+    </include>
+
+    <!-- Control -->
+    <include file="$(find sauvc_app)/launch/control_no_detection.launch">
+    </include>
+
+
+    <!-- Helper function -->
+    <node type="imu_filter.py" name="imu_filter" pkg="helper" args="-d $(find helper)/scripts/imu_filter.py"/>
+
+</launch>
