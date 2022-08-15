@@ -6,13 +6,13 @@
 /**
  * Motor to Arduino Pin Connection.
  */
-# define MOTOR_NO_1_PIN int(3)
-# define MOTOR_NO_2_PIN int(4)
-# define MOTOR_NO_3_PIN int(5)
-# define MOTOR_NO_4_PIN int(6)
-# define MOTOR_NO_5_PIN int(7)
-# define MOTOR_NO_6_PIN int(8)
-# define MOTOR_NO_7_PIN int(9)
+# define MOTOR_NO_1_PIN int(9)
+# define MOTOR_NO_2_PIN int(11)
+# define MOTOR_NO_3_PIN int(6)
+# define MOTOR_NO_4_PIN int(8)
+# define MOTOR_NO_5_PIN int(13)
+# define MOTOR_NO_6_PIN int(12)
+# define MOTOR_NO_7_PIN int(7)
 # define MOTOR_NO_8_PIN int(10)
 
 /**
@@ -130,8 +130,6 @@
                                                 {MOTOR_NO_6_PIN, 1400}, \
                                                 {MOTOR_NO_7_PIN, 1600}, \
                                                 {MOTOR_NO_8_PIN, 1400}
-
-
 /**
  * Blue Robotics Ping Sonar
  */

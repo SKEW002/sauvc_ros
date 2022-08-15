@@ -8,7 +8,7 @@
 
 void register_motor();
 void stop_operation();
-void all_run_slow();
+void test_motor();
 void horizontal_movement(int *pwm);
 void vertical_movement(int *pwm);
 

@@ -14,6 +14,7 @@ byte state_count = 0;
 float gx;
 int hori_pwm[4];
 int vert_pwm[4];
+int stop_pwm[4] = {1500,1500,1500,1500};
 
 std_msgs::Int16 depth_msg;
 
@@ -47,8 +48,9 @@ ros::Subscriber<std_msgs::Int16MultiArray> control_sub("/cmd_out/pwm", &controlC
 ros::Publisher depth_pub("/cmd_out/depth", &depth_msg);
 
 
-void transit_state () {
+bool transit_state () {
   state = !state;
+  return true;
 
 }
 
@@ -65,7 +67,7 @@ void setup() {
   delay(1000*5);
 
   pinMode(E_STOP_PIN, INPUT);
-  attachInterrupt(digitalPinToInterrupt(E_STOP_PIN), transit_state, HIGH);
+  attachInterrupt(digitalPinToInterrupt(E_STOP_PIN), transit_state, FALLING);
 
   nh.initNode();
   nh.subscribe(test_sub);
@@ -76,14 +78,26 @@ void setup() {
 
 
 void loop() {
-
   nh.spinOnce();
-    
+  Serial.println(digitalRead(2));
+
   horizontal_movement(hori_pwm);
   vertical_movement(vert_pwm);
   depth_msg.data = get_depth();
   depth_pub.publish(&depth_msg);
   //nh.loginfo("Start");
+  //Serial.println(state);
+  if(state == HIGH){
+//    horizontal_movement(hori_pwm);
+//    vertical_movement(vert_pwm);
+    Serial.println("run");
+    test_motor();
+  }
+  else if(state == LOW){
+    Serial.println("stop");
+    horizontal_movement(stop_pwm);
+    vertical_movement(stop_pwm);
+  }
   delay(100);
 
   
