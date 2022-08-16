@@ -28,6 +28,8 @@ class Control:
         self.target_gamma = 0
         self.prev_roll_angle_error = 0
         self.prev_pitch_angle_error = 0
+        self.current_time = 10000000
+        self.last_recorded_time = 0
         self.motion = []
         #self.pwm_array = [1,2,3,4,5,6,7,8]   # test
 
@@ -87,7 +89,9 @@ class Control:
         pitch_angle_error_difference = pitch_angle_error - self.prev_pitch_angle_error
         self.prev_roll_angle_error = roll_angle_error
         self.prev_pitch_angle_error = pitch_angle_error
-
+        self.current_time = rospy.get_rostime()
+        time_difference = self.current_time - self.last_recorded_time
+        self.last_recorded_time = self.current_time
         self.pwm[4] = 1500
         self.pwm[5] = 1500
         self.pwm[6] = 1500
@@ -95,14 +99,14 @@ class Control:
 
         if abs(roll_angle_error) > error_tolerance or abs(pitch_angle_error) > error_tolerance:
             if abs(roll_angle_error) > error_tolerance:
-                roll_difference = int(roll_angle_error * self.kp - roll_angle_error_difference * self.kd)
+                roll_difference = int(roll_angle_error * self.kp - roll_angle_error_difference * self.kd / time_difference)
                 self.pwm[4] -= roll_difference
                 self.pwm[5] -= roll_difference
                 self.pwm[6] += roll_difference
                 self.pwm[7] += roll_difference
 
             if abs(pitch_angle_error) > error_tolerance:
-                pitch_difference = int(pitch_angle_error * self.kp - pitch_angle_error_difference * self.kd)
+                pitch_difference = int(pitch_angle_error * self.kp - pitch_angle_error_difference * self.kd/ time_difference)
                 self.pwm[4] -= pitch_difference
                 self.pwm[5] += pitch_difference
                 self.pwm[6] -= pitch_difference
