@@ -27,8 +27,8 @@ class Control:
         self.motion = []
         #self.pwm_array = [1,2,3,4,5,6,7,8]   # test
 
-        self.max_pwm = 1700
-        self.min_pwm = 1300
+        self.max_pwm = 1600
+        self.min_pwm = 1400
 
         self.max_depth = 0.3
         self.min_depth = 0.2
@@ -44,7 +44,7 @@ class Control:
         self.start_angle = True
         self.saved_angle = False
 
-        self.start_depth = True # set true for testing
+        self.start_depth = False # set true for testing
         self.depth = 0.25 # for testing
 
 
@@ -139,8 +139,8 @@ class Control:
             direction_to_compensate, error = self._compute_forward_movement_error()
             self.pwm[0] = self._compute_stabilised_speed(1, error, direction_to_compensate)
             self.pwm[1] = self._compute_stabilised_speed(2, error, direction_to_compensate)
-            self.pwm[2] = 1700
-            self.pwm[3] = 1700
+            self.pwm[2] = 1600
+            self.pwm[3] = 1600
 
 
     def _compute_forward_movement_error(self):

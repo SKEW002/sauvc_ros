@@ -9,7 +9,7 @@
 #include "thruster_control.h"
 #include "ping_sonar.h"
 
-volatile byte state = HIGH;
+volatile byte state = LOW;
 byte state_count = 0;
 float gx;
 int hori_pwm[4];
@@ -81,19 +81,25 @@ void loop() {
   nh.spinOnce();
   Serial.println(digitalRead(2));
 
-  horizontal_movement(hori_pwm);
-  vertical_movement(vert_pwm);
   depth_msg.data = get_depth();
   depth_pub.publish(&depth_msg);
-  //nh.loginfo("Start");
+  Serial.println(get_depth());
+  
+  char log_msg[100];
+  
+  sprintf(log_msg, "Hori: %d %d %d %d", (int)(hori_pwm[0]), (int)(hori_pwm[1]),(int)(hori_pwm[2]), (int)(hori_pwm[3]));
+  nh.loginfo(log_msg);
   //Serial.println(state);
-  if(state == HIGH){
-//    horizontal_movement(hori_pwm);
-//    vertical_movement(vert_pwm);
+  if(state == LOW){
+    
+    horizontal_movement(hori_pwm);
+    
+    vertical_movement(stop_pwm);
+    nh.loginfo("run");
     Serial.println("run");
-    test_motor();
   }
-  else if(state == LOW){
+  else if(state == HIGH){
+    nh.loginfo("stop");
     Serial.println("stop");
     horizontal_movement(stop_pwm);
     vertical_movement(stop_pwm);
