@@ -44,7 +44,7 @@ class Control:
         self.start_angle = True
         self.saved_angle = False
 
-        self.start_depth = False # set true for testing
+        self.start_depth = True # set true for testing
         self.depth = 0.25 # for testing
 
 
