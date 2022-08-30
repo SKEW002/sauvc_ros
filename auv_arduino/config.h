@@ -18,7 +18,7 @@
 /**
  * E stop switch to Arduino Pin Connection.
  */
-# define E_STOP_PIN int(2)
+# define E_STOP_PIN int(21)
 
 /**
  * ESC Input Value Safety Limit
