@@ -89,7 +89,7 @@ void setup() {
 
 void loop() {
   nh.spinOnce();
-  Serial.println(digitalRead(21));
+  Serial.println(digitalRead(3));
   
   sensor.read();
   uint8_t depth = sensor.depth() * 100; //m
