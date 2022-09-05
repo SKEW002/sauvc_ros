@@ -55,7 +55,7 @@ class Control:
         self.start_imu = False
         self.start_angle = True
         self.saved_angle = False
-        self.start_depth = True # set true for testing
+        self.start_depth = False # set true for testing
 
 
         self.depth = 0 # for testing
@@ -74,7 +74,7 @@ class Control:
 
         self.actual_alpha, self.actual_beta, self.actual_yaw = self.quaternion_to_euler(msg.data[2], msg.data[3], msg.data[4], msg.data[5])  # x,y,z,w
 
-        # print(self.actual_alpha, self.actual_beta)
+        print(self.actual_alpha, self.actual_beta)
 
         self.angle_msg.data = self.actual_yaw
         self.angle_pub.publish(self.angle_msg)
@@ -95,7 +95,8 @@ class Control:
 
 
     def balance(self):
-        error_tolerance = 0.4
+        error_tolerance = 3  # degree
+        depth_tolerance = 0.05 # meter
         roll_angle_error  = self.actual_alpha - self.target_alpha
         pitch_angle_error = self.actual_beta - self.target_beta
         roll_angle_error_difference = roll_angle_error - self.prev_roll_angle_error
@@ -103,75 +104,78 @@ class Control:
         self.prev_roll_angle_error = roll_angle_error
         self.prev_pitch_angle_error = pitch_angle_error
         self.current_time = rospy.get_rostime()
-        time_difference = self.current_time - self.last_recorded_time
-        self.last_recorded_time = self.current_time
-        
+        time_difference = self.current_time.nsecs - self.last_recorded_time
+        self.last_recorded_time = self.current_time.nsecs
+        time_difference = 1
         self.pwm[4] = 1500
         self.pwm[5] = 1500
         self.pwm[6] = 1500
         self.pwm[7] = 1500
         
-        if abs(roll_angle_error) > error_tolerance or abs(pitch_angle_error) > error_tolerance:
-            if abs(roll_angle_error) > error_tolerance:
-                roll_difference = int(roll_angle_error * self.kp - roll_angle_error_difference * self.kd / time_difference)
-                self.pwm[4] -= roll_difference
-                self.pwm[5] -= roll_difference
-                self.pwm[6] += roll_difference
-                self.pwm[7] += roll_difference
+        try:
+            if abs(roll_angle_error) > error_tolerance or abs(pitch_angle_error) > error_tolerance:
+                if abs(roll_angle_error) > error_tolerance:
+                    roll_difference = int(roll_angle_error * self.kp - roll_angle_error_difference * self.kd / time_difference)
+                    self.pwm[4] -= roll_difference
+                    self.pwm[5] -= roll_difference
+                    self.pwm[6] += roll_difference
+                    self.pwm[7] += roll_difference
 
-            if abs(pitch_angle_error) > error_tolerance:
-                pitch_difference = int(pitch_angle_error * self.kp - pitch_angle_error_difference * self.kd/ time_difference)
-                self.pwm[4] -= pitch_difference
-                self.pwm[5] += pitch_difference
-                self.pwm[6] -= pitch_difference
-                self.pwm[7] += pitch_difference
-                
-        else:
-            if self.depth < self.min_depth:
-                for i in range(4):
-                    self.pwm[i+4] += int((self.min_depth - self.depth) * self.kp)
+                if abs(pitch_angle_error) > error_tolerance:
+                    pitch_difference = int(pitch_angle_error * self.kp - pitch_angle_error_difference * self.kd/ time_difference)
+                    self.pwm[4] -= pitch_difference
+                    self.pwm[5] += pitch_difference
+                    self.pwm[6] -= pitch_difference
+                    self.pwm[7] += pitch_difference
+                    
+            else:
+                if self.depth < (self.target_depth - depth_tolerance):
+                    for i in range(4):
+                        self.pwm[i+4] -= int((self.min_depth - self.depth) * self.kp)
 
-            elif self.depth > self.max_depth:
-                for i in range(4):
-                    self.pwm[i+4] -= int((self.depth - self.max_depth) * self.kp)
+                elif self.depth > (self.target_depth + depth_tolerance):
+                    for i in range(4):
+                        self.pwm[i+4] += int((self.depth - self.max_depth) * self.kp)
 
-        ''' P controller
-        if abs(self.actual_beta) > self.target_beta or abs(self.actual_alpha) > self.target_alpha:
-            self.stable = False
-            if abs(self.actual_beta) > self.target_beta:
-                self.pwm[4] -= int((self.actual_beta - self.target_beta) * self.kp)
-                self.pwm[5] -= int((self.actual_beta - self.target_beta) * self.kp)
-                self.pwm[6] += int((self.actual_beta - self.target_beta) * self.kp)
-                self.pwm[7] += int((self.actual_beta - self.target_beta) * self.kp)
+            ''' P controller
+            if abs(self.actual_beta) > self.target_beta or abs(self.actual_alpha) > self.target_alpha:
+                self.stable = False
+                if abs(self.actual_beta) > self.target_beta:
+                    self.pwm[4] -= int((self.actual_beta - self.target_beta) * self.kp)
+                    self.pwm[5] -= int((self.actual_beta - self.target_beta) * self.kp)
+                    self.pwm[6] += int((self.actual_beta - self.target_beta) * self.kp)
+                    self.pwm[7] += int((self.actual_beta - self.target_beta) * self.kp)
 
-            # elif self.gx < -0.1:
-            #     self.pwm_5 += 10
-            #     self.pwm_6 += 10
-            #     self.pwm_7 -= 10
-            #     self.pwm_8 -= 10
+                # elif self.gx < -0.1:
+                #     self.pwm_5 += 10
+                #     self.pwm_6 += 10
+                #     self.pwm_7 -= 10
+                #     self.pwm_8 -= 10
 
 
-            if abs(self.actual_alpha) > self.target_alpha:
-                self.pwm[4] -= int((self.actual_alpha - self.target_alpha) * self.kp)
-                self.pwm[5] += int((self.actual_alpha - self.target_alpha) * self.kp)
-                self.pwm[6] -= int((self.actual_alpha - self.target_alpha) * self.kp)
-                self.pwm[7] += int((self.actual_alpha - self.target_alpha) * self.kp)
+                if abs(self.actual_alpha) > self.target_alpha:
+                    self.pwm[4] -= int((self.actual_alpha - self.target_alpha) * self.kp)
+                    self.pwm[5] += int((self.actual_alpha - self.target_alpha) * self.kp)
+                    self.pwm[6] -= int((self.actual_alpha - self.target_alpha) * self.kp)
+                    self.pwm[7] += int((self.actual_alpha - self.target_alpha) * self.kp)
 
-            # elif self.gy < -0.1:
-            #     self.pwm_5 += 10
-            #     self.pwm_6 -= 10
-            #     self.pwm_7 += 10
-            #     self.pwm_8 -= 10
-        else:
-            self.stable = True
-            if self.depth < self.min_depth:
-                for i in range(4):
-                    self.pwm[i+4] += int((self.min_depth - self.depth) * self.kp)
+                # elif self.gy < -0.1:
+                #     self.pwm_5 += 10
+                #     self.pwm_6 -= 10
+                #     self.pwm_7 += 10
+                #     self.pwm_8 -= 10
+            else:
+                self.stable = True
+                if self.depth < self.min_depth:
+                    for i in range(4):
+                        self.pwm[i+4] += int((self.min_depth - self.depth) * self.kp)
 
-            elif self.depth > self.max_depth:
-                for i in range(4):
-                    self.pwm[i+4] -= int((self.depth - self.max_depth) * self.kp)
-        '''  
+                elif self.depth > self.max_depth:
+                    for i in range(4):
+                        self.pwm[i+4] -= int((self.depth - self.max_depth) * self.kp)
+            '''  
+        except ZeroDivisionError:
+            pass
 
 
     def check_limit(self):

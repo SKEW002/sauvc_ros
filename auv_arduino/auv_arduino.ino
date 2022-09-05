@@ -42,7 +42,7 @@ ros::Publisher depth_pub("/cmd_out/depth", &depth_msg);
 
 
 bool transit_state () {
-  if (state_count > 30){
+  if (state_count >5){
     state = !state;    
     state_count = 0;
   }
@@ -103,7 +103,7 @@ void loop() {
   if(state == LOW){
     //test_motor();
 
-    horizontal_movement(hori_pwm);
+    //horizontal_movement(hori_pwm);
     vertical_movement(vert_pwm);
     nh.loginfo("run");
     Serial.println("run");
