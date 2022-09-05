@@ -1,23 +1,21 @@
 //ROS lib
 #include <ros.h>
 #include <std_msgs/Bool.h>
-#include <std_msgs/Float32.h>
-#include <std_msgs/Int16.h>
+#include <std_msgs/UInt16.h>
 #include <std_msgs/Int16MultiArray.h>
-#include <std_msgs/Float32MultiArray.h>
 
 #include "thruster_control.h"
 #include "ping_sonar.h"
 #include "MS5837.h"
 
-MS5837 sensor;
+MS5837 depth_sensor;
 volatile byte state = HIGH;
-uint8_t state_count = 0;
+uint16_t state_count = 0;
 int hori_pwm[4];
 int vert_pwm[4];
-int stop_pwm[4] = {1500,1500,1500,1500};
+int stop_pwm[4] = {STOP_SIGNAL,STOP_SIGNAL,STOP_SIGNAL,STOP_SIGNAL};
 
-std_msgs::Int16 depth_msg;
+std_msgs::UInt16 depth_msg;
 
 ros::NodeHandle nh;
 
@@ -65,18 +63,17 @@ void setup() {
   delay(1000*5);
   Wire.begin();
 
-  while (!sensor.init()) {
+  while (!depth_sensor.init()) {
     Serial.println("Init failed!");
     Serial.println("Are SDA/SCL connected correctly?");
-    Serial.println("Blue Robotics Bar30: White=SDA, Green=SCL");
+    Serial.println("Blue Robotics Bar02: White=SDA, Green=SCL");
     Serial.println("\n\n\n");
     delay(5000);
   }
   
-  sensor.setModel(MS5837::MS5837_30BA);
-  sensor.setFluidDensity(997); // kg/m^3 (freshwater, 1029 for seawater)
+  depth_sensor.setModel(DEPTH_SENSOR_MODEL);
+  depth_sensor.setFluidDensity(FLUID_DENSITY); 
 
-  
   pinMode(E_STOP_PIN, INPUT);
   attachInterrupt(digitalPinToInterrupt(E_STOP_PIN), transit_state, FALLING);
 
@@ -89,22 +86,24 @@ void setup() {
 
 void loop() {
   nh.spinOnce();
-  Serial.println(digitalRead(3));
+  Serial.println(digitalRead(E_STOP_PIN));
   
-  sensor.read();
-  uint8_t depth = sensor.depth() * 100; //m
+  depth_sensor.read();
+  depth_msg.data = abs((int)(depth_sensor.depth() * 100)); //cm
+  depth_pub.publish(&depth_msg);
+
+  // For pwm debugging
+  /*
+  char log_msg[100];
+  sprintf(log_msg, "Hori: %d %d %d %d", (int)(hori_pwm[0]), (int)(hori_pwm[1]),(int)(hori_pwm[2]), (int)(hori_pwm[3]));
+  nh.loginfo(log_msg);
+  Serial.println(state);
+  */
   
-  //depth_msg.data = get_depth();
-  //depth_pub.publish(&depth_msg);
-  
-  //char log_msg[100];
-  //sprintf(log_msg, "Hori: %d %d %d %d", (int)(hori_pwm[0]), (int)(hori_pwm[1]),(int)(hori_pwm[2]), (int)(hori_pwm[3]));
-  //nh.loginfo(log_msg);
-  //Serial.println(state);
   if(state == LOW){
-    
-    horizontal_movement(hori_pwm);
     //test_motor();
+
+    horizontal_movement(hori_pwm);
     vertical_movement(vert_pwm);
     nh.loginfo("run");
     Serial.println("run");
@@ -115,7 +114,8 @@ void loop() {
     horizontal_movement(stop_pwm);
     vertical_movement(stop_pwm);
   }
-  if(state_count < 255){
+  
+  if(state_count < 255){ //prevent bounce back
     state_count++;
     Serial.println(state_count);
   }

@@ -29,11 +29,30 @@
 /**
  * ESC Input Value for Stop Signal
  */
-# define ESC_INPUT_FOR_STOP_SIGNAL int(1500)
+# define STOP_SIGNAL int(1500)
+
+/**
+ * Blue Robotics Ping Sonar
+ */
+static const uint8_t arduinoRxPin = 19; //Serial1 rx
+static const uint8_t arduinoTxPin = 18; //Serial1 tx
+
+static const uint8_t ledPin = 13;
+
+
+/**
+ * Blue Robotics Bar02
+ */
+# define DEPTH_SENSOR_MODEL MS5837::MS5837_02BA
+# define FLUID_DENSITY 997 // kg/m^3 (freshwater, 1029 for seawater)
+# define OPERATING_DEPTH float()
+# define DEPTH_TOLERANCE float(3.25)
+
+
 
 /**
  * ESC Input Value of motors for each motion. (for reference only)
- */
+
 # define MOTOR_AND_ESC_INPUT_FOR_FORWARD {MOTOR_NO_1_PIN, 1700}, \
                                          {MOTOR_NO_2_PIN, 1700}, \
                                          {MOTOR_NO_3_PIN, 1700}, \
@@ -130,11 +149,8 @@
                                                 {MOTOR_NO_6_PIN, 1400}, \
                                                 {MOTOR_NO_7_PIN, 1600}, \
                                                 {MOTOR_NO_8_PIN, 1400}
-/**
- * Blue Robotics Ping Sonar
- */
-static const uint8_t arduinoRxPin = 19; //Serial1 rx
-static const uint8_t arduinoTxPin = 18; //Serial1 tx
 
-static const uint8_t ledPin = 13;
+*/
+
+
 # endif

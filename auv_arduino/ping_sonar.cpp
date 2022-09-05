@@ -16,7 +16,7 @@ void initialize_ping_sonar(){
 }
 
 
-int get_depth(){
+int get_distance(){
   if (ping.update()) {
     return ping.distance(); //in mm
   } 

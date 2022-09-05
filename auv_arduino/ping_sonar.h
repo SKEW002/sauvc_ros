@@ -6,6 +6,6 @@
 static Ping1D ping { Serial1 };
 
 void initialize_ping_sonar();
-int get_depth();
+int get_distance();
 
 #endif

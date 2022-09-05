@@ -29,14 +29,14 @@ void register_motor(){
  * Stop motors.
  */
 void stop_operation(){
-    thruster1.writeMicroseconds(ESC_INPUT_FOR_STOP_SIGNAL);
-    thruster2.writeMicroseconds(ESC_INPUT_FOR_STOP_SIGNAL);
-    thruster3.writeMicroseconds(ESC_INPUT_FOR_STOP_SIGNAL);
-    thruster4.writeMicroseconds(ESC_INPUT_FOR_STOP_SIGNAL);
-    thruster5.writeMicroseconds(ESC_INPUT_FOR_STOP_SIGNAL);
-    thruster6.writeMicroseconds(ESC_INPUT_FOR_STOP_SIGNAL);
-    thruster7.writeMicroseconds(ESC_INPUT_FOR_STOP_SIGNAL);
-    thruster8.writeMicroseconds(ESC_INPUT_FOR_STOP_SIGNAL);
+    thruster1.writeMicroseconds(STOP_SIGNAL);
+    thruster2.writeMicroseconds(STOP_SIGNAL);
+    thruster3.writeMicroseconds(STOP_SIGNAL);
+    thruster4.writeMicroseconds(STOP_SIGNAL);
+    thruster5.writeMicroseconds(STOP_SIGNAL);
+    thruster6.writeMicroseconds(STOP_SIGNAL);
+    thruster7.writeMicroseconds(STOP_SIGNAL);
+    thruster8.writeMicroseconds(STOP_SIGNAL);
 }
 
 
