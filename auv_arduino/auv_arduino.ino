@@ -91,6 +91,7 @@ void loop() {
   depth_sensor.read();
   depth_msg.data = abs((int)(depth_sensor.depth() * 100)); //cm
   depth_pub.publish(&depth_msg);
+  Serial.println(depth_sensor.depth());
 
   // For pwm debugging
   /*

@@ -44,8 +44,8 @@ class Control:
         self.min_depth = 0.3
         self.target_depth = 0.55
 
-        self.kp = 10
-        self.kd = 10
+        self.kp = 2
+        self.kd = 15
         self._P = 20
 
         self.pwm = [1500 for i in range(8)]  # thruster 1-8
@@ -55,10 +55,10 @@ class Control:
         self.start_imu = False
         self.start_angle = True
         self.saved_angle = False
-        self.start_depth = False # set true for testing
+        self.start_depth = True # set true for testing
 
 
-        self.depth = 0 # for testing
+        self.depth = 0.55 # for testing
 
 
     def targetAngleCallback(self, msg):
@@ -255,7 +255,7 @@ class Control:
         t3 = +2.0 * (w * z + x * y)
         t4 = +1.0 - 2.0 * (y * y + z * z)
         yaw = math.atan2(t3, t4) * 180 / math.pi
-        return roll, -pitch, yaw
+        return -roll, -pitch, yaw
 
 
 
