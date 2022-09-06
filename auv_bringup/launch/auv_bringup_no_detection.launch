@@ -12,7 +12,7 @@
     </include>
 
     <!-- Control -->
-    <include file="$(find sauvc_app)/launch/control_no_detection.launch">
+    <include file="$(find sauvc_control)/launch/control_no_detection.launch">
     </include>
 
 

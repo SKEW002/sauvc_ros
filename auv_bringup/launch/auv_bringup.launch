@@ -17,7 +17,7 @@
     </include>
 
     <!-- Control -->
-    <include file="$(find sauvc_app)/launch/control.launch">
+    <include file="$(find sauvc_control)/launch/control.launch">
     </include>
 
 
