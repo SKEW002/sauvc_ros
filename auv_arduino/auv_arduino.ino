@@ -94,12 +94,13 @@ void loop() {
   Serial.println(depth_sensor.depth());
 
   // For pwm debugging
-  /*
+  
   char log_msg[100];
-  sprintf(log_msg, "Hori: %d %d %d %d", (int)(hori_pwm[0]), (int)(hori_pwm[1]),(int)(hori_pwm[2]), (int)(hori_pwm[3]));
+  //sprintf(log_msg, "Hori: %d %d %d %d", (int)(hori_pwm[0]), (int)(hori_pwm[1]),(int)(hori_pwm[2]), (int)(hori_pwm[3]));
+  sprintf(log_msg, "Vert: %d %d %d %d", (int)(vert_pwm[0]), (int)(vert_pwm[1]),(int)(vert_pwm[2]), (int)(vert_pwm[3]));  
   nh.loginfo(log_msg);
   Serial.println(state);
-  */
+  
   
   if(state == LOW){
     //test_motor();
@@ -120,7 +121,7 @@ void loop() {
     state_count++;
     Serial.println(state_count);
   }
-  delay(100);
+  delay(50);
 
   
 }
