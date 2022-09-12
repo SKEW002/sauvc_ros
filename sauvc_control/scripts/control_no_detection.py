@@ -39,7 +39,7 @@ class Control:
 
         self.max_pwm = 1610
         self.min_pwm = 1390
-        self.depth_pwm = 0
+
         self.max_depth = 0.4
         self.min_depth = 0.3
         self.target_depth = 55 #cm
@@ -49,6 +49,9 @@ class Control:
         self._P = 20
 
         self.pwm = [1500 for i in range(8)]  # thruster 1-8
+        self.max_depth_pwm = 60
+        self.max_balance_pwm = 50
+
 
         self.stable = False
 
@@ -112,8 +115,15 @@ class Control:
         self.pwm[7] = 1500
     
         if abs(roll_angle_error) > error_tolerance or abs(pitch_angle_error) > error_tolerance:
+
             if abs(roll_angle_error) > error_tolerance:
                 roll_difference = int(roll_angle_error * self.kp - roll_angle_error_difference * self.kd / time_difference)
+                if abs(roll_difference) >= self.max_balance_pwm and roll_difference >= 0:
+                    roll_difference = self.max_balance_pwm
+
+                elif abs(roll_difference) >= self.max_balance_pwm and roll_difference < 0:
+                    roll_difference = -(self.max_balance_pwm)
+
                 self.pwm[4] -= roll_difference
                 self.pwm[5] -= roll_difference
                 self.pwm[6] += roll_difference
@@ -121,6 +131,12 @@ class Control:
 
             if abs(pitch_angle_error) > error_tolerance:
                 pitch_difference = int(pitch_angle_error * self.kp - pitch_angle_error_difference * self.kd/ time_difference)
+                if abs(pitch_difference) >= self.max_balance_pwm and pitch_difference >= 0:
+                    pitch_difference = self.max_balance_pwm
+
+                elif abs(roll_difference) >= self.max_balance_pwm and pitch_difference < 0:
+                    pitch_difference = -(self.max_balance_pwm)
+
                 self.pwm[4] -= pitch_difference
                 self.pwm[5] += pitch_difference
                 self.pwm[6] -= pitch_difference
@@ -129,20 +145,18 @@ class Control:
 
     def depth_control(self):
         self.depth_tolerance = 5 # cm
-        self.depth_pwm = 0
-        self.max_depth_pwm = 100
         #print(self.depth - self.target_depth)
         if abs(self.depth - self.target_depth) > self.depth_tolerance:
-            self.depth_pwm += int((self.depth - self.target_depth) * self.kp)
+            depth_difference += int((self.depth - self.target_depth) * self.kp)
 
-        if self.depth_pwm >= self.max_depth_pwm:
-            self.depth_pwm = self.max_depth_pwm
+        if depth_difference >= self.max_depth_pwm:
+            depth_difference = self.max_depth_pwm
 
-        elif self.depth_pwm <= -(self.max_depth_pwm):
-            self.depth_pwm = -(self.max_depth_pwm)
+        elif depth_difference <= -(self.max_depth_pwm):
+            depth_difference = -(self.max_depth_pwm)
 
         for i in range(4):
-            self.pwm[i+4] += self.depth_pwm
+            self.pwm[i+4] += depth_difference
 
 
             #for i in range(4):

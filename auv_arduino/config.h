@@ -20,11 +20,11 @@
  */
 # define E_STOP_PIN int(2)
 
-/**
- * ESC Input Value Safety Limit
- */
-# define MAX_ESC_INPUT int(1900)
-# define MIN_ESC_INPUT int(1100)
+///**
+// * ESC Input Value Safety Limit
+// */
+//# define MAX_ESC_INPUT int(1900)
+//# define MIN_ESC_INPUT int(1100)
 
 /**
  * ESC Input Value for Stop Signal

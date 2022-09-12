@@ -45,13 +45,45 @@ void stop_operation(){
  */
 void test_motor(){
     thruster1.writeMicroseconds(1550);
+    delay(1000);
+    thruster1.writeMicroseconds(STOP_SIGNAL);
+    delay(500);
     thruster2.writeMicroseconds(1550);
+    delay(1000);
+    thruster2.writeMicroseconds(STOP_SIGNAL);
+    delay(500);
     thruster3.writeMicroseconds(1550);
+    delay(1000);
+    thruster3.writeMicroseconds(STOP_SIGNAL);
+    delay(500);
     thruster4.writeMicroseconds(1550);
+    delay(1000);
+    thruster4.writeMicroseconds(STOP_SIGNAL);
+    delay(500);
     thruster5.writeMicroseconds(1550);
+    delay(1000);
+    thruster5.writeMicroseconds(STOP_SIGNAL);
+    delay(500);
     thruster6.writeMicroseconds(1550);
+    delay(1000);
+    thruster6.writeMicroseconds(STOP_SIGNAL);
+    delay(500);
     thruster7.writeMicroseconds(1550);
+    delay(1000);
+    thruster7.writeMicroseconds(STOP_SIGNAL);
+    delay(500);
     thruster8.writeMicroseconds(1550);
+    delay(1000);
+    thruster8.writeMicroseconds(STOP_SIGNAL);
+    delay(500);
+    
+//    thruster2.writeMicroseconds(1550);
+//    thruster3.writeMicroseconds(1550);
+//    thruster4.writeMicroseconds(1550);
+//    thruster5.writeMicroseconds(1550);
+//    thruster6.writeMicroseconds(1550);
+//    thruster7.writeMicroseconds(1550);
+//    thruster8.writeMicroseconds(1550);
 }
 
 
