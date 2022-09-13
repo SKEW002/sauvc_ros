@@ -13,7 +13,9 @@ class Control:
     def __init__(self):
 
         # ROS subscribe
+        #rospy.Subscriber('/cmd_out/imu_data',Float32MultiArray , self.imuCallback)
         rospy.Subscriber('/cmd_out/imu_data',Float32MultiArray , self.imuCallback)
+
         rospy.Subscriber('/cmd_out/depth',UInt16 , self.depthCallback)
         rospy.Subscriber('/cmd_out/target_angle',Float32 , self.targetAngleCallback)
         rospy.Subscriber('/cmd_out/motion',String , self.motionCallback)
@@ -37,20 +39,20 @@ class Control:
         self.motion = []
         #self.pwm_array = [1,2,3,4,5,6,7,8]   # test
 
-        self.max_pwm = 1610
-        self.min_pwm = 1390
+        self.max_pwm = 1620
+        self.min_pwm = 1250
 
         self.max_depth = 0.4
         self.min_depth = 0.3
         self.target_depth = 55 #cm
 
-        self.kp = 2
-        self.kd = 10
+        self.kp = 1
+        self.kd = 0.5
         self._P = 20
 
         self.pwm = [1500 for i in range(8)]  # thruster 1-8
-        self.max_depth_pwm = 60
-        self.max_balance_pwm = 50
+        self.max_depth_pwm = 300
+        self.max_balance_pwm = 25
 
 
         self.stable = False
@@ -98,7 +100,7 @@ class Control:
 
 
     def balance(self):
-        error_tolerance = 10  # degree
+        error_tolerance = 4  # degree
         roll_angle_error  = self.actual_alpha - self.target_alpha
         pitch_angle_error = self.actual_beta - self.target_beta
         roll_angle_error_difference = roll_angle_error - self.prev_roll_angle_error
@@ -125,8 +127,8 @@ class Control:
                     roll_difference = -(self.max_balance_pwm)
 
                 self.pwm[4] -= roll_difference
-                self.pwm[5] -= roll_difference
-                self.pwm[6] += roll_difference
+                self.pwm[5] += roll_difference
+                self.pwm[6] -= roll_difference
                 self.pwm[7] += roll_difference
 
             if abs(pitch_angle_error) > error_tolerance:
@@ -134,17 +136,18 @@ class Control:
                 if abs(pitch_difference) >= self.max_balance_pwm and pitch_difference >= 0:
                     pitch_difference = self.max_balance_pwm
 
-                elif abs(roll_difference) >= self.max_balance_pwm and pitch_difference < 0:
+                elif abs(pitch_difference) >= self.max_balance_pwm and pitch_difference < 0:
                     pitch_difference = -(self.max_balance_pwm)
 
                 self.pwm[4] -= pitch_difference
-                self.pwm[5] += pitch_difference
-                self.pwm[6] -= pitch_difference
+                self.pwm[5] -= pitch_difference
+                self.pwm[6] += pitch_difference
                 self.pwm[7] += pitch_difference
                 
 
     def depth_control(self):
         self.depth_tolerance = 5 # cm
+        depth_difference = -190
         #print(self.depth - self.target_depth)
         if abs(self.depth - self.target_depth) > self.depth_tolerance:
             depth_difference += int((self.depth - self.target_depth) * self.kp)
@@ -278,7 +281,7 @@ class Control:
         t3 = +2.0 * (w * z + x * y)
         t4 = +1.0 - 2.0 * (y * y + z * z)
         yaw = math.atan2(t3, t4) * 180 / math.pi
-        return roll, pitch, yaw
+        return -roll, -pitch, yaw
 
 
 
