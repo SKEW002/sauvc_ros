@@ -29,11 +29,11 @@ class Control:
         self.pwm_msg = Int16MultiArray()
 
         # Angles
-        self.target_alpha = 0
-        self.target_beta = 0
-        self.target_yaw = 0
-        self.prev_roll_angle_error = 0
-        self.prev_pitch_angle_error = 0
+        self.target_alpha = 0.0
+        self.target_beta = 0.0
+        self.target_yaw = 0.0
+        self.prev_roll_angle_error = 0.0
+        self.prev_pitch_angle_error = 0.0
         self.current_time = 10000000
         self.last_recorded_time = 0
         self.motion = []
@@ -45,10 +45,14 @@ class Control:
         self.max_depth = 0.4
         self.min_depth = 0.3
         self.target_depth = 55 #cm
+        self.reached_target_depth = False
+
 
         self.kp = 1
         self.kd = 0.5
-        self._P = 20
+
+        self.depth_p = 2
+        self.forward_p = 20
 
         self.pwm = [1500 for i in range(8)]  # thruster 1-8
         self.max_depth_pwm = 300
@@ -59,7 +63,6 @@ class Control:
 
         self.start_imu = False
         self.start_angle = True
-        self.saved_angle = False
         self.start_depth = False # set true for testing
 
 
@@ -84,10 +87,6 @@ class Control:
         self.angle_msg.data = self.actual_yaw
         self.angle_pub.publish(self.angle_msg)
         self.start_imu = True
-
-        if self.start_imu == True and self.saved_angle == False: # remove this for normal control
-            self.saved_angle =True
-            self.target_yaw = self.actual_yaw
 
 
 
@@ -150,7 +149,10 @@ class Control:
         depth_difference = -190
         #print(self.depth - self.target_depth)
         if abs(self.depth - self.target_depth) > self.depth_tolerance:
-            depth_difference += int((self.depth - self.target_depth) * self.kp)
+            depth_difference += int((self.depth - self.target_depth) * self.depth_p)
+
+        else:
+            self.reached_target_depth = True
 
         if depth_difference >= self.max_depth_pwm:
             depth_difference = self.max_depth_pwm
@@ -162,46 +164,25 @@ class Control:
             self.pwm[i+4] += depth_difference
 
 
-            #for i in range(4):
-             #   self.pwm[i+4] += int((self.target_depth - self.max_depth) * self.kp)
 
-        ''' P controller
-        if abs(self.actual_beta) > self.target_beta or abs(self.actual_alpha) > self.target_alpha:
-            self.stable = False
-            if abs(self.actual_beta) > self.target_beta:
-                self.pwm[4] -= int((self.actual_beta - self.target_beta) * self.kp)
-                self.pwm[5] -= int((self.actual_beta - self.target_beta) * self.kp)
-                self.pwm[6] += int((self.actual_beta - self.target_beta) * self.kp)
-                self.pwm[7] += int((self.actual_beta - self.target_beta) * self.kp)
+    # def depth_control(self):
+    #     self.depth_tolerance = 2 # cm
+    #     self.depth_difference = -190
+    #     #print(self.depth - self.target_depth)
+    #     if abs(self.depth - self.target_depth) > self.depth_tolerance:
+    #         self.depth_difference += int((self.depth - self.target_depth) * self.depth_p)
+    #     else:
+    #         self.reached_target_depth = True
 
-            # elif self.gx < -0.1:
-            #     self.pwm_5 += 10
-            #     self.pwm_6 += 10
-            #     self.pwm_7 -= 10
-            #     self.pwm_8 -= 10
+    #     if self.depth_difference >= self.max_depth_pwm:
+    #         self.depth_difference = self.max_depth_pwm
 
+    #     elif self.depth_difference <= -(self.max_depth_pwm):
+    #         self.depth_difference = -(self.max_depth_pwm)
 
-            if abs(self.actual_alpha) > self.target_alpha:
-                self.pwm[4] -= int((self.actual_alpha - self.target_alpha) * self.kp)
-                self.pwm[5] += int((self.actual_alpha - self.target_alpha) * self.kp)
-                self.pwm[6] -= int((self.actual_alpha - self.target_alpha) * self.kp)
-                self.pwm[7] += int((self.actual_alpha - self.target_alpha) * self.kp)
+    #     for i in range(4):
+    #         self.pwm[i+4] += self.depth_difference
 
-            # elif self.gy < -0.1:
-            #     self.pwm_5 += 10
-            #     self.pwm_6 -= 10
-            #     self.pwm_7 += 10
-            #     self.pwm_8 -= 10
-        else:
-            self.stable = True
-            if self.depth < self.min_depth:
-                for i in range(4):
-                    self.pwm[i+4] += int((self.min_depth - self.depth) * self.kp)
-
-            elif self.depth > self.max_depth:
-                for i in range(4):
-                    self.pwm[i+4] -= int((self.depth - self.max_depth) * self.kp)
-        '''  
 
 
     def check_limit(self):
@@ -219,7 +200,7 @@ class Control:
 
 
     def move(self, motion="FORWARD"):
-        if motion == "FORWARD":
+        if motion == "FORWARD" and self.reached_target_depth:
             direction_to_compensate, error = self.compute_forward_movement_error()
             self.pwm[0] = self.compute_stabilised_speed(1, error, direction_to_compensate)
             self.pwm[1] = self.compute_stabilised_speed(2, error, direction_to_compensate)
@@ -228,7 +209,6 @@ class Control:
 
 
     def compute_forward_movement_error(self):
-        """Compute the forward movement error's magnitude and direction."""
         if (self.actual_yaw >= 0 and self.target_yaw >= 0) or (self.actual_yaw < 0 and self.target_yaw < 0):
             error = math.fabs(self.target_yaw - self.actual_yaw)
 
@@ -263,10 +243,9 @@ class Control:
 
 
     def compute_stabilised_speed(self, thruster_id, error, direction_to_compensate):
-        """Compute the stabilised speed from the controller."""
         if (thruster_id == 1 and direction_to_compensate == "CW") or (thruster_id == 2 and direction_to_compensate == "CCW"):
             error = -1*error
-        return int(self.pwm[thruster_id - 1] + self._P * error)
+        return int(self.pwm[thruster_id - 1] + self.forward_p * error)
 
 
 
