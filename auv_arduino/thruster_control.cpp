@@ -44,6 +44,7 @@ void stop_operation(){
  * Motor test.
  */
 void test_motor(){
+  /*
     thruster1.writeMicroseconds(1550);
     delay(1000);
     thruster1.writeMicroseconds(STOP_SIGNAL);
@@ -76,14 +77,15 @@ void test_motor(){
     delay(1000);
     thruster8.writeMicroseconds(STOP_SIGNAL);
     delay(500);
-    
-//    thruster2.writeMicroseconds(1550);
-//    thruster3.writeMicroseconds(1550);
-//    thruster4.writeMicroseconds(1550);
-//    thruster5.writeMicroseconds(1550);
-//    thruster6.writeMicroseconds(1550);
-//    thruster7.writeMicroseconds(1550);
-//    thruster8.writeMicroseconds(1550);
+    */
+    thruster1.writeMicroseconds(1550);
+    thruster2.writeMicroseconds(1550);
+    thruster3.writeMicroseconds(1550);
+    thruster4.writeMicroseconds(1550);
+    thruster5.writeMicroseconds(1550);
+    thruster6.writeMicroseconds(1550);
+    thruster7.writeMicroseconds(1550);
+    thruster8.writeMicroseconds(1550);
 }
 
 
