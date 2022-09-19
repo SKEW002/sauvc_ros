@@ -34,8 +34,6 @@ class Control:
         self.target_yaw = 0.0
         self.prev_roll_angle_error = 0.0
         self.prev_pitch_angle_error = 0.0
-        self.current_time = 10000000
-        self.last_recorded_time = 0
         self.motion = []
         #self.pwm_array = [1,2,3,4,5,6,7,8]   # test
 
@@ -46,7 +44,7 @@ class Control:
         self.min_depth = 0.3
         self.target_depth = 55 #cm
         self.reached_target_depth = False
-
+        self.moving = False
 
         self.kp = 5
         self.kd = 2.5
@@ -57,7 +55,7 @@ class Control:
         self.pwm = [1500 for i in range(8)]  # thruster 1-8
         self.max_depth_pwm = 300
         self.max_balance_pwm = 25
-
+        self.max_forward_pwm = 150
 
         self.stable = False
 
@@ -106,9 +104,7 @@ class Control:
         pitch_angle_error_difference = pitch_angle_error - self.prev_pitch_angle_error
         self.prev_roll_angle_error = roll_angle_error
         self.prev_pitch_angle_error = pitch_angle_error
-        self.current_time = rospy.get_rostime()
-        time_difference = self.current_time.nsecs - self.last_recorded_time
-        self.last_recorded_time = self.current_time.nsecs
+
         time_difference = 1
         self.pwm[4] = 1500
         self.pwm[5] = 1500
@@ -148,10 +144,12 @@ class Control:
         self.depth_tolerance = 5 # cm
         self.depth_difference = -190
         #print(self.depth - self.target_depth)
+
         if abs(self.depth - self.target_depth) > self.depth_tolerance:
             self.depth_difference += int((self.depth - self.target_depth) * self.depth_p)
         else:
             self.reached_target_depth = True
+
 
         if self.depth_difference >= self.max_depth_pwm:
             self.depth_difference = self.max_depth_pwm
@@ -159,8 +157,23 @@ class Control:
         elif self.depth_difference <= -(self.max_depth_pwm):
             self.depth_difference = -(self.max_depth_pwm)
 
+
+
         for i in range(4):
             self.pwm[i+4] += self.depth_difference
+
+
+        # new implementation ###################################################################################################### check +-
+        if self.moving == True:
+            if self.depth - self.target_depth < -self.depth_tolerance:
+                self.target_beta = 15.0
+
+            elif self.depth - self.target_depth > self.depth_tolerance:
+
+                self.target_beta = -15.0
+            else:
+                self.target_beta = 0.0
+
 
 
 
@@ -185,15 +198,14 @@ class Control:
 
 
     def check_limit(self):
-
+        hori_thruster = [0,1,2,3]
         for i, pwm in enumerate(self.pwm):
+            if i in hori_thruster:
+                if pwm >= 1500 + self.max_forward_pwm:
+                    self.pwm[i] = 1500 + self.max_forward_pwm
 
-            if i == 0 or i==1 or i==2 or i==3:
-                if pwm >= 1650:
-                    self.pwm[i] = 1650
-
-                elif pwm <= 1400:
-                    self.pwm[i] = 1400
+                elif pwm <= 1500 - self.max_forward_pwm:
+                    self.pwm[i] = 1500 - self.max_forward_pwm
                 continue
 
             if pwm >= self.max_pwm:
@@ -207,18 +219,26 @@ class Control:
 
 
     def move(self, motion="FORWARD"):
+
+        for i in range(4):
+            self.pwm[i] = 1500
+
         if motion == "FORWARD" and self.reached_target_depth:
+            self.moving = True
             direction_to_compensate, error = self.compute_forward_movement_error()
-            self.pwm[2] = 1650
-            self.pwm[3] = 1650
-            self.pwm[0] = 1650+self.compute_stabilised_speed(3, error, direction_to_compensate)
-            self.pwm[1] = 1650+self.compute_stabilised_speed(4, error, direction_to_compensate)
+
+            self.pwm[0] += self.max_forward_pwm + self.compute_stabilised_speed(3, error, direction_to_compensate)
+            self.pwm[1] += self.max_forward_pwm + self.compute_stabilised_speed(4, error, direction_to_compensate)
+            self.pwm[2] += self.max_forward_pwm
+            self.pwm[3] += self.max_forward_pwm
 
         else:
             self.pwm[0] = 1500
             self.pwm[1] = 1500
             self.pwm[2] = 1500
             self.pwm[3] = 1500
+
+
     def compute_forward_movement_error(self):
         if (self.actual_yaw >= 0 and self.target_yaw >= 0) or (self.actual_yaw < 0 and self.target_yaw < 0):
             error = math.fabs(self.target_yaw - self.actual_yaw)
@@ -276,13 +296,6 @@ class Control:
 
 
     def publish_pwm(self):
-        # try:
-        #     self.update_pwm()
-        # except TypeError:
-        #     pass
-        # else:
-        #     try:
-        #         self.pwm_pub.publish(pwm_msg)
         self.check_limit()
         self.pwm_pub.publish(self.pwm_msg)
 
