@@ -12,6 +12,7 @@ import cv2
 import torch
 import numpy as np
 from math import isnan, isinf, atan, pi
+from detection_msgs.msg import BoundingBox, BoundingBoxes
 print("Using CUDA: ",torch.cuda.is_available())
 
 # Inference
@@ -20,9 +21,9 @@ class Detection:
 
         '''Perception init'''
         self.weights_path = rospy.get_param('~weights_path')
-        self.model = torch.hub.load("ultralytics/yolov5","custom", path=self.weights_path)
-        self.model.cuda()
-        self.model.classes=[0]
+        #self.model = torch.hub.load("ultralytics/yolov5","custom", path=self.weights_path)
+        #self.model.cuda()
+        # self.model.classes=[0]
         #self.model.model.half()
         self.br = CvBridge()
 
@@ -35,6 +36,7 @@ class Detection:
         rospy.Subscriber('/zedm/zed_node/left/image_rect_color', Image, self.image_callback)
         #rospy.Subscriber('/zedm/zed_node/depth/depth_registered', Image, self.depth_callback)
         rospy.Subscriber('/cmd_out/current_angle', Float32, self.current_angle_callback)
+        rospy.Subscriber('/yolov5/detections', BoundingBoxes, self.boundingbox_callback)
 
         '''Publisher'''
         self.pub_target_angle = rospy.Publisher('/cmd_out/target_angle', Float32, queue_size=10)
@@ -52,7 +54,7 @@ class Detection:
         self.y0 = 0
         self.x1 = 0
         self.y1 = 0
-        self.obj = 10
+        self.obj = 'qual_gate'
         self.distance = 10
 
 
@@ -64,8 +66,8 @@ class Detection:
         ''' Color detection'''
         self.color_center = [0,0]
         self.boundaries = { # hsv color boundaries
-            'red' : np.array([[0,120,5], [5,255,255], [161, 125, 5], [179, 255, 255]]),  # plastic
-            'blue' : np.array([[98, 109, 2], [116, 255, 255]]),   # paper
+            'red' : np.array([[0,120,5], [5,255,255], [161, 125, 5], [179, 255, 255]]),  
+            'blue' : np.array([[98, 109, 2], [116, 255, 255]]),  
         }
         self.bgr_colors = {'red':(0,0,255), 'blue':(255,0,0), 'orange':(0,140,255)}
         self.found_red = False
@@ -75,6 +77,14 @@ class Detection:
 
         self.mission = ["main_gate", "yellow_flare", "surface"]
 
+    def boundingbox_callback(self, msg):
+        if msg.bounding_boxes:
+            boundingbox = msg.bounding_boxes[0]
+            self.x0 = boundingbox.xmin
+            self.y0 = boundingbox.ymin
+            self.x1 = boundingbox.xmax
+            self.y1 = boundingbox.ymax
+            self.obj = boundingbox.Class
 
     def current_angle_callback(self, msg):
         self.current_angle = msg.data
@@ -82,6 +92,7 @@ class Detection:
 
     def image_callback(self, data):
         self.bgr_image = self.br.imgmsg_to_cv2(data,"bgr8")
+        self.image_height, self.image_width, self.image_chanel = self.bgr_image.shape # (480,640,3)
         self.start_image = True
 
 
@@ -89,8 +100,8 @@ class Detection:
         self.depth_image = self.br.imgmsg_to_cv2(data, desired_encoding="32FC1")
         self.depth_array = np.array(self.depth_image, dtype=np.float32)
 
-        u = 672//2
-        v = 376//2
+        u = self.image_width//2
+        v = self.image_height//2
 
         if isnan(self.depth_array[v,u]):
             self.distance = 0.7
@@ -106,72 +117,67 @@ class Detection:
 
     def inference(self):
         self.motion_msg.data = " FORWARD"
-        results = self.model(self.bgr_image, size=320)  # includes NMS
-        outputs = results.xyxy[0].cpu()
-        with torch.no_grad():
-            if len(outputs) > 0:
-                for i,detection in enumerate(outputs):
-                    self.x0 = int(outputs[i][0]) #xmin
-                    self.y0 = int(outputs[i][1]) #ymin
-                    self.x1 = int(outputs[i][2]) #xmax
-                    self.y1 = int(outputs[i][3]) #ymax
-                    self.obj = int(outputs[i][5]) #object number
-                    self.center = ((self.x0+self.x1)//2,(self.y0+self.y1)//2)
+        # results = self.model(self.bgr_image, size=320)  # includes NMS
+        # outputs = results.xyxy[0].cpu()
 
-                    if self.obj == 0: # qualification gate
-                        self.motion_msg.data = " FORWARD"
+        self.center = ((self.x0+self.x1)//2,(self.y0+self.y1)//2)
 
-                    #self.bgr_image = cv2.circle(self.bgr_image, [self.center[0], self.center[1]], 2,(0,0,255),2)
+        print(self.x0,self.y0,self.x1,self.y1, self.center)
 
-                    if self.pub_the_msg == True:
-                        cv2.rectangle(self.bgr_image,(self.x0, self.y0),(self.x1,self.y1),(0,255,0),3)  
+        if self.obj == 'qual_gate': # qualification gate
+            self.motion_msg.data = " FORWARD"
+
+        #self.bgr_image = cv2.circle(self.bgr_image, [self.center[0], self.center[1]], 2,(0,0,255),2)
+
+        if self.pub_the_msg == True:
+            cv2.rectangle(self.bgr_image,(self.x0, self.y0),(self.x1,self.y1),(0,255,0),3)  
+    
+        try:
+            target_angle = atan((self.image_width/2 - self.center[0]) / self.center[1]) * 180.0/pi # 672x376 ################################################## check
             
-                try:
-                    target_angle = atan((672.0/2 - self.center[0]) / self.center[1]) * 180.0/pi # 672x376 ################################################## check
-                    
-                    if target_angle < 10:
-                        target_angle = -10
-                    elif target_angle > 10:
-                        target_angle = 10
-                    else:
-                        target_angle = 0
-
-                    target_angle += self.current_angle
-                    self.target_angle_msg.data = target_angle
-
-                except ZeroDivisionError:
-                    print(self.center)
-
-
-            if self.distance < 1.0:
-                self.motion_msg.data = " STOP"
-
-            #self.color_detect()
-
-            ################################################ TODO ############################
-            if self.found_red:
-                #print(self.color_center)
-                self.load_current_angle()
-                if self.color_center[0] >= 672/2:
-                    self.target_angle_msg.data = self.loaded_current_angle + 10 ###this is wrong
-
-                else:
-                    self.target_angle_msg.data = self.loaded_current_angle - 10
+            if target_angle < 10:
+                target_angle = -10
+            elif target_angle > 10:
+                target_angle = 10
             else:
-                try:
-                    self.target_angle_msg.data = target_angle
-                except UnboundLocalError:
-                    pass
+                target_angle = 0
 
-            
-            self.pub_target_angle.publish(self.target_angle_msg)
-            self.pub_motion.publish(self.motion_msg)
+            target_angle += self.current_angle
+            self.target_angle_msg.data = target_angle
 
-            cv2.imshow("frame",self.bgr_image)
+        except ZeroDivisionError:
+            print(self.center)
 
-            if cv2.waitKey(1) == ord('q'):  # q to quit
-                cv2.destroyAllWindows()
-                raise StopIteration  
+
+        if self.distance < 1.0:
+            self.motion_msg.data = " STOP"
+
+        #self.color_detect()
+
+        ################################################ TODO ############################
+        if self.found_red:
+            #print(self.color_center)
+            self.load_current_angle()
+            if self.color_center[0] >= self.image_width/2:
+                self.target_angle_msg.data = self.loaded_current_angle + 10 ###this is wrong
+
+            else:
+                self.target_angle_msg.data = self.loaded_current_angle - 10
+        else:
+            try:
+                self.target_angle_msg.data = target_angle
+            except UnboundLocalError:
+                pass
+
+        
+        self.pub_target_angle.publish(self.target_angle_msg)
+        self.pub_motion.publish(self.motion_msg)
+
+        #cv2.imshow("frame",self.bgr_image)
+
+        if cv2.waitKey(1) == ord('q'):  # q to quit
+            cv2.destroyAllWindows()
+            raise StopIteration  
 
             
 
@@ -250,7 +256,7 @@ class Detection:
 
 # Results
 if __name__ == "__main__":
-    rospy.init_node('detect', anonymous=True)
+    rospy.init_node('computer_vision', anonymous=True)
     rate = rospy.Rate(10)
     detection = Detection()
     try:
