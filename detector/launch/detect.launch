@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
     <!-- Camera topic and weights, config and classes files -->
-    <arg name="weights_path"	            default="$(find detector)/weights/yolov5n6.pt"/>
+    <arg name="weights_path"	            default="$(find detector)/weights/qual_gate.pt"/>
     
     <!-- Node -->
     <node name="detect" pkg="detector" type="detect.py" output="screen">

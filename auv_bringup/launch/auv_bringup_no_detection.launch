@@ -17,8 +17,8 @@
 
 
     <!-- Helper function -->
-    <node type="imu_filter.py" name="imu_filter" pkg="helper" args="-d $(find helper)/scripts/imu_filter.py"/>
+    <!--node type="imu_filter.py" name="imu_filter" pkg="helper" args="-d $(find helper)/scripts/imu_filter.py"/-->
 
-    <!-- node type="odom_filter.py" name="odom_filter" pkg="helper" args="-d $(find helper)/scripts/odom_filter.py"/ -->
+    <node type="odom_filter.py" name="odom_filter" pkg="helper" args="-d $(find helper)/scripts/odom_filter.py"/>
 
 </launch>

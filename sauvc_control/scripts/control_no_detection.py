@@ -53,7 +53,7 @@ class Control:
         self.forward_p = 15
 
         self.pwm = [1500 for i in range(8)]  # thruster 1-8
-        self.max_depth_pwm = 300
+        self.max_depth_pwm = 150
         self.max_balance_pwm = 25
         self.max_forward_pwm = 150
 
@@ -142,7 +142,7 @@ class Control:
 
     def depth_control(self):
         self.depth_tolerance = 5 # cm
-        self.depth_difference = -190
+        self.depth_difference = -80
         #print(self.depth - self.target_depth)
 
         if abs(self.depth - self.target_depth) > self.depth_tolerance:
@@ -160,17 +160,19 @@ class Control:
 
 
         for i in range(4):
-            self.pwm[i+4] += self.depth_difference
+            if i == 1 or i==2:
+                self.pwm[i+4] -= self.depth_difference
+            else:
+                self.pwm[i+4] += self.depth_difference
 
 
         # new implementation ###################################################################################################### check +-
         if self.moving == True:
             if self.depth - self.target_depth < -self.depth_tolerance:
-                self.target_beta = 15.0
-
-            elif self.depth - self.target_depth > self.depth_tolerance:
-
                 self.target_beta = -15.0
+
+            #elif self.depth - self.target_depth > self.depth_tolerance:
+            #    self.target_beta = 15.0
             else:
                 self.target_beta = 0.0
 

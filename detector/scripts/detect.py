@@ -18,23 +18,22 @@ print("Using CUDA: ",torch.cuda.is_available())
 class Detection:
     def __init__(self):
 
-        self.without_zed = True
-
         '''Perception init'''
         self.weights_path = rospy.get_param('~weights_path')
         self.model = torch.hub.load("ultralytics/yolov5","custom", path=self.weights_path)
+        self.model.cuda()
         self.model.classes=[0]
-        self.model.model.half()
+        #self.model.model.half()
         self.br = CvBridge()
 
         '''Start init'''
         self.start_image = False
-        self.start_depth = self.without_zed
-        self.start_angle = self.without_zed
+        self.start_depth = True
+        self.start_angle = True
 
         '''Subscriber'''
         rospy.Subscriber('/zedm/zed_node/left/image_rect_color', Image, self.image_callback)
-        rospy.Subscriber('/zedm/zed_node/depth/depth_registered', Image, self.depth_callback)
+        #rospy.Subscriber('/zedm/zed_node/depth/depth_registered', Image, self.depth_callback)
         rospy.Subscriber('/cmd_out/current_angle', Float32, self.current_angle_callback)
 
         '''Publisher'''
@@ -122,13 +121,21 @@ class Detection:
                     if self.obj == 0: # qualification gate
                         self.motion_msg.data = " FORWARD"
 
-                    self.bgr_image = cv2.circle(self.bgr_image, [self.center[0], self.center[1]], 2,(0,0,255),2)
+                    #self.bgr_image = cv2.circle(self.bgr_image, [self.center[0], self.center[1]], 2,(0,0,255),2)
 
                     if self.pub_the_msg == True:
                         cv2.rectangle(self.bgr_image,(self.x0, self.y0),(self.x1,self.y1),(0,255,0),3)  
             
                 try:
                     target_angle = atan((672.0/2 - self.center[0]) / self.center[1]) * 180.0/pi # 672x376 ################################################## check
+                    
+                    if target_angle < 10:
+                        target_angle = -10
+                    elif target_angle > 10:
+                        target_angle = 10
+                    else:
+                        target_angle = 0
+
                     target_angle += self.current_angle
                     self.target_angle_msg.data = target_angle
 
@@ -139,7 +146,7 @@ class Detection:
             if self.distance < 1.0:
                 self.motion_msg.data = " STOP"
 
-            self.color_detect()
+            #self.color_detect()
 
             ################################################ TODO ############################
             if self.found_red:

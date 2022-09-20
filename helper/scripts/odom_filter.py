@@ -9,7 +9,7 @@ class Odom_Filter:
         rospy.Subscriber('/zedm/zed_node/odom',Odometry , self.odomCallback)
         self.start_odom = False
 
-        self.odom_pub = rospy.Publisher('/cmd_out/odom_data', Float32MultiArray , queue_size=1)
+        self.odom_pub = rospy.Publisher('/cmd_out/imu_data', Float32MultiArray , queue_size=1)
 
 
         self.odom_data = [[0 for i in range(sample)] for j in range(6)]
