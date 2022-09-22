@@ -9,11 +9,9 @@ from cv_bridge import CvBridge, CvBridgeError
 
 # obj detection
 import cv2
-import torch
 import numpy as np
 from math import isnan, isinf, atan, pi
 from detection_msgs.msg import BoundingBox, BoundingBoxes
-print("Using CUDA: ",torch.cuda.is_available())
 
 # Inference
 class Detection:
@@ -119,10 +117,10 @@ class Detection:
         self.motion_msg.data = " FORWARD"
         # results = self.model(self.bgr_image, size=320)  # includes NMS
         # outputs = results.xyxy[0].cpu()
+        if self.x0 >0 and self.x1>0:
+            self.center = ((self.x0+self.x1)//2,(self.y0+self.y1)//2)
 
-        self.center = ((self.x0+self.x1)//2,(self.y0+self.y1)//2)
-
-        print(self.x0,self.y0,self.x1,self.y1, self.center)
+        #print(self.x0,self.y0,self.x1,self.y1, self.center)
 
         if self.obj == 'qual_gate': # qualification gate
             self.motion_msg.data = " FORWARD"
@@ -131,23 +129,26 @@ class Detection:
 
         if self.pub_the_msg == True:
             cv2.rectangle(self.bgr_image,(self.x0, self.y0),(self.x1,self.y1),(0,255,0),3)  
-    
+
         try:
             target_angle = atan((self.image_width/2 - self.center[0]) / self.center[1]) * 180.0/pi # 672x376 ################################################## check
             
-            if target_angle < 10:
-                target_angle = -10
+            if target_angle < -10:
+                target_angle = -5 + self.current_angle
+                self.target_angle_msg.data = target_angle
+                self.pub_target_angle.publish(self.target_angle_msg)
+
             elif target_angle > 10:
-                target_angle = 10
+                target_angle = 5 + self.current_angle
+                self.target_angle_msg.data = target_angle
+                self.pub_target_angle.publish(self.target_angle_msg)
+
             else:
                 target_angle = 0
 
-            target_angle += self.current_angle
-            self.target_angle_msg.data = target_angle
 
         except ZeroDivisionError:
-            print(self.center)
-
+            pass
 
         if self.distance < 1.0:
             self.motion_msg.data = " STOP"
@@ -170,7 +171,6 @@ class Detection:
                 pass
 
         
-        self.pub_target_angle.publish(self.target_angle_msg)
         self.pub_motion.publish(self.motion_msg)
 
         #cv2.imshow("frame",self.bgr_image)
@@ -179,7 +179,9 @@ class Detection:
             cv2.destroyAllWindows()
             raise StopIteration  
 
-            
+        self.center = [0,0]
+        self.x0 = 0
+        self.x1 = 0
 
     def load_current_angle(self):
         self.loaded_current_angle = self.current_angle

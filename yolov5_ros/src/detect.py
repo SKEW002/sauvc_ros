@@ -47,6 +47,7 @@ class Yolov5Detector:
         self.view_image = rospy.get_param("~view_image")
         # Initialize weights 
         weights = rospy.get_param("~weights")
+        self.start_image = False
         # Initialize model
         self.device = select_device(str(rospy.get_param("~device","")))
         self.model = DetectMultiBackend(weights, device=self.device, dnn=rospy.get_param("~dnn"), data=rospy.get_param("~data"))
@@ -104,12 +105,15 @@ class Yolov5Detector:
     def callback(self, data):
         """adapted from yolov5/detect.py"""
         # print(data.header)
+        self.img_raw = data
         if self.compressed_input:
             im = self.bridge.compressed_imgmsg_to_cv2(data, desired_encoding="bgr8")
         else:
-            im = self.bridge.imgmsg_to_cv2(data, desired_encoding="bgr8")
+            self.im = self.bridge.imgmsg_to_cv2(data, desired_encoding="bgr8")
+            self.start_image = True
         
-        im, im0 = self.preprocess(im)
+    def inference(self):
+        im, im0 = self.preprocess(self.im)
         # print(im.shape)
         # print(img0.shape)
         # print(img.shape)
@@ -132,8 +136,8 @@ class Yolov5Detector:
         det = pred[0].cpu().numpy()
 
         bounding_boxes = BoundingBoxes()
-        bounding_boxes.header = data.header
-        bounding_boxes.image_header = data.header
+        bounding_boxes.header = self.img_raw.header
+        bounding_boxes.image_header = self.img_raw.header
         
         annotator = Annotator(im0, line_width=self.line_thickness, example=str(self.names))
         if len(det):
@@ -195,6 +199,11 @@ if __name__ == "__main__":
     check_requirements(exclude=("tensorboard", "thop"))
     
     rospy.init_node("yolov5", anonymous=True)
+    rate = rospy.Rate(10) 
     detector = Yolov5Detector()
-    
-    rospy.spin()
+    rospy.loginfo("Preparing...")
+    while not rospy.is_shutdown():
+        if detector.start_image:
+            detector.inference()
+            rospy.loginfo("Start inference")
+        rate.sleep()

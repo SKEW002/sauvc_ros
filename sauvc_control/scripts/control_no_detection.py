@@ -13,7 +13,6 @@ class Control:
     def __init__(self):
 
         # ROS subscribe
-        #rospy.Subscriber('/cmd_out/imu_data',Float32MultiArray , self.imuCallback)
         rospy.Subscriber('/cmd_out/imu_data',Float32MultiArray , self.imuCallback)
 
         rospy.Subscriber('/cmd_out/depth',UInt16 , self.depthCallback)
@@ -122,8 +121,8 @@ class Control:
                     roll_difference = -(self.max_balance_pwm)
 
                 self.pwm[4] -= roll_difference
-                self.pwm[5] += roll_difference
-                self.pwm[6] -= roll_difference
+                self.pwm[5] -= roll_difference
+                self.pwm[6] += roll_difference
                 self.pwm[7] += roll_difference
 
             if abs(pitch_angle_error) > error_tolerance:
@@ -135,8 +134,8 @@ class Control:
                     pitch_difference = -(self.max_balance_pwm)
 
                 self.pwm[4] -= pitch_difference
-                self.pwm[5] -= pitch_difference
-                self.pwm[6] += pitch_difference
+                self.pwm[5] += pitch_difference
+                self.pwm[6] -= pitch_difference
                 self.pwm[7] += pitch_difference
                 
 
@@ -161,7 +160,7 @@ class Control:
 
         for i in range(4):
             if i == 1 or i==2:
-                self.pwm[i+4] -= self.depth_difference
+                self.pwm[i+4] -= self.depth_difference # 6,7 opposite
             else:
                 self.pwm[i+4] += self.depth_difference
 
