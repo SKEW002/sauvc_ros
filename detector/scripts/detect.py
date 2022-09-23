@@ -64,10 +64,12 @@ class Detection:
         ''' Color detection'''
         self.color_center = [0,0]
         self.boundaries = { # hsv color boundaries
+            'yellow' : np.array([[20,90,20],[30,255,255],[6,100,150],[14,255,255]]),
             'red' : np.array([[0,120,5], [5,255,255], [161, 125, 5], [179, 255, 255]]),  
-            'blue' : np.array([[98, 109, 2], [116, 255, 255]]),  
+            'blue' : np.array([[98, 109, 2], [116, 255, 255]])
         }
-        self.bgr_colors = {'red':(0,0,255), 'blue':(255,0,0), 'orange':(0,140,255)}
+
+        self.bgr_colors = {'red':(0,0,255), 'blue':(255,0,0), 'yellow':(0,140,255)}
         self.found_red = False
 
 
@@ -218,7 +220,7 @@ class Detection:
         hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV) # convert BGR image to HSV image
         center = [0,0]
         for color, code in self.boundaries.items():
-            if color == 'red':
+            if color == 'yellow':
                 low1, high1, low2, high2 = code
                 mask1 = cv2.inRange(hsv, low1, high1)
                 mask2 = cv2.inRange(hsv, low2, high2)
@@ -233,7 +235,7 @@ class Detection:
 
             cnts,_ = cv2.findContours(mask, cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
 
-            if color == 'red':
+            if color == 'yellow':
                 for index, con in enumerate(cnts):
                     (x,y),radius = cv2.minEnclosingCircle(con)
                     if radius < 2: # ignore noises 
