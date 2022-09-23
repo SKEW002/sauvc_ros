@@ -54,7 +54,8 @@ class Control:
         self.pwm = [1500 for i in range(8)]  # thruster 1-8
         self.max_depth_pwm = 150
         self.max_balance_pwm = 25
-        self.max_forward_pwm = 150
+        self.max_forward_pwm_limit = 400
+        self.max_forward_pwm = 0
 
         self.stable = False
 
@@ -168,7 +169,7 @@ class Control:
         # new implementation ###################################################################################################### check +-
         if self.moving == True:
             if self.depth - self.target_depth < -self.depth_tolerance:
-                self.target_beta = -15.0
+                self.target_beta = -10.0
 
             #elif self.depth - self.target_depth > self.depth_tolerance:
             #    self.target_beta = 15.0
@@ -202,10 +203,10 @@ class Control:
         hori_thruster = [0,1,2,3]
         for i, pwm in enumerate(self.pwm):
             if i in hori_thruster:
-                if pwm >= 1500 + self.max_forward_pwm:
+                if pwm >= 1500 + self.max_forward_pwm_limit:
                     self.pwm[i] = 1500 + self.max_forward_pwm
 
-                elif pwm <= 1500 - self.max_forward_pwm:
+                elif pwm <= 1500 - self.max_forward_pwm_limit:
                     self.pwm[i] = 1500 - self.max_forward_pwm
                 continue
 
@@ -225,6 +226,8 @@ class Control:
             self.pwm[i] = 1500
 
         if motion == "FORWARD" and self.reached_target_depth:
+            if self.max_forward_pwm < self.max_forward_pwm_limit:
+                self.max_forward_pwm +=50
             self.moving = True
             direction_to_compensate, error = self.compute_forward_movement_error()
 
