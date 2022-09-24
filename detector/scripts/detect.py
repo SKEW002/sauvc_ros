@@ -54,6 +54,7 @@ class Detection:
         self.y1 = 0
         self.obj = 'qual_gate'
         self.distance = 10
+        self.center = [0,0]
 
 
         '''Angle'''
@@ -64,12 +65,13 @@ class Detection:
         ''' Color detection'''
         self.color_center = [0,0]
         self.boundaries = { # hsv color boundaries
-            'yellow' : np.array([[20,90,20],[30,255,255],[6,100,150],[14,255,255]]),
             'red' : np.array([[0,120,5], [5,255,255], [161, 125, 5], [179, 255, 255]]),  
-            'blue' : np.array([[98, 109, 2], [116, 255, 255]])
-        }
+            'blue' : np.array([[98, 109, 2], [116, 255, 255]]),
+            'yellow' : np.array([[20,20,5],[30,255,255],[6,70,5],[14,255,255]]),
+            'green' : np.array([[30, 10, 5], [95, 255, 255]]),
 
-        self.bgr_colors = {'red':(0,0,255), 'blue':(255,0,0), 'yellow':(0,140,255)}
+            }
+        self.bgr_colors = {'red':(0,0,255), 'green':(0,255,0), 'yellow':(0,140,255)}
         self.found_red = False
 
 
@@ -116,6 +118,8 @@ class Detection:
 
 
     def inference(self):
+        self.time_check()
+
         self.motion_msg.data = " FORWARD"
         # results = self.model(self.bgr_image, size=320)  # includes NMS
         # outputs = results.xyxy[0].cpu()
@@ -130,7 +134,7 @@ class Detection:
         #self.bgr_image = cv2.circle(self.bgr_image, [self.center[0], self.center[1]], 2,(0,0,255),2)
 
         if self.pub_the_msg == True:
-            cv2.rectangle(self.bgr_image,(self.x0, self.y0),(self.x1,self.y1),(0,255,0),3)  
+            cv2.rectangle(self.bgr_image,(self.x0, self.y0),(self.x1,self.y1),(255,0,0),3)  
 
         try:
             target_angle = atan((self.image_width/2 - self.center[0]) / self.center[1]) * 180.0/pi # 672x376 ################################################## check
@@ -155,17 +159,32 @@ class Detection:
         if self.distance < 1.0:
             self.motion_msg.data = " STOP"
 
-        #self.color_detect()
+        self.color_detect()
 
         ################################################ TODO ############################
-        if self.found_red:
-            #print(self.color_center)
+        # if self.found_red:
+        #     #print(self.color_center)
+        #     self.load_current_angle()
+        #     if self.color_center[0] >= self.image_width/2:
+        #         self.target_angle_msg.data = self.loaded_current_angle + 10 ###this is wrong
+
+        #     else:
+        #         self.target_angle_msg.data = self.loaded_current_angle - 10
+        # else:
+        #     try:
+        #         self.target_angle_msg.data = target_angle
+        #     except UnboundLocalError:
+        #         pass
+
+       if self.found_red:
             self.load_current_angle()
             if self.color_center[0] >= self.image_width/2:
-                self.target_angle_msg.data = self.loaded_current_angle + 10 ###this is wrong
+                self.target_angle_msg.data = self.loaded_current_angle + 2 
+                self.pub_target_angle.publish(self.target_angle_msg)
 
             else:
-                self.target_angle_msg.data = self.loaded_current_angle - 10
+                self.target_angle_msg.data = self.loaded_current_angle - 2
+                self.pub_target_angle.publish(self.target_angle_msg)
         else:
             try:
                 self.target_angle_msg.data = target_angle
@@ -175,15 +194,13 @@ class Detection:
         
         self.pub_motion.publish(self.motion_msg)
 
-        #cv2.imshow("frame",self.bgr_image)
+        cv2.imshow("frame",self.bgr_image)
 
         if cv2.waitKey(1) == ord('q'):  # q to quit
             cv2.destroyAllWindows()
             raise StopIteration  
 
-        self.center = [0,0]
-        self.x0 = 0
-        self.x1 = 0
+        self.reset()
 
     def load_current_angle(self):
         self.loaded_current_angle = self.current_angle
@@ -210,17 +227,19 @@ class Detection:
         if duration > 80:
             self.mission_num += 1
 
-        elif duration > 140:
+        elif duration > 30:
+            self.motion_msg.data = " STOP"
+            self.pub_motion.publish(self.motion_msg)
             self.mission_num += 1
 
     def color_detect(self):
         largest_radius = 0
 
-        blur = cv2.GaussianBlur(self.bgr_image, (11, 11), 0) # reduce noises, smoothing image
-        hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV) # convert BGR image to HSV image
+        #blur = cv2.GaussianBlur(self.bgr_image, (11, 11), 0) # reduce noises, smoothing image
+        hsv = cv2.cvtColor(self.bgr_image, cv2.COLOR_BGR2HSV) # convert BGR image to HSV image
         center = [0,0]
         for color, code in self.boundaries.items():
-            if color == 'yellow':
+            if color == 'red' or color == 'yellow':
                 low1, high1, low2, high2 = code
                 mask1 = cv2.inRange(hsv, low1, high1)
                 mask2 = cv2.inRange(hsv, low2, high2)
@@ -235,17 +254,31 @@ class Detection:
 
             cnts,_ = cv2.findContours(mask, cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
 
-            if color == 'yellow':
+            if color == 'red':
                 for index, con in enumerate(cnts):
                     (x,y),radius = cv2.minEnclosingCircle(con)
-                    if radius < 2: # ignore noises 
+                    if radius < 0.2: # ignore noises 
                         pass
                     else:
                         if radius > largest_radius:
                             self.found_red = True
                             largest_radius = radius
                             center = [int(x),int(y)]
-                            #cv2.drawContours(self.bgr_image, cnts, -1, self.bgr_colors[color], 5)
+                            cv2.drawContours(self.bgr_image, cnts, -1, self.bgr_colors[color], 5)
+                            cv2.putText(self.bgr_image,color, center, cv2.FONT_HERSHEY_SIMPLEX, 0.6,self.bgr_colors[color],2)
+
+
+            if color == 'yellow' or color == "green":
+                for index, con in enumerate(cnts):
+                    (x,y),radius = cv2.minEnclosingCircle(con)
+                    if radius < 0.2: # ignore noises 
+                        pass
+                    else:
+                        if radius > largest_radius:
+                            self.found_red = True
+                            largest_radius = radius
+                            center = [int(x),int(y)]
+                            cv2.drawContours(self.bgr_image, cnts, -1, self.bgr_colors[color], 5)
                             cv2.putText(self.bgr_image,color, center, cv2.FONT_HERSHEY_SIMPLEX, 0.6,self.bgr_colors[color],2)
 
             if largest_radius == 0:
@@ -255,8 +288,9 @@ class Detection:
 
 
     def reset(self):
-        self.center = (0,0)
-
+        self.center = [0,0]
+        self.x0 = 0
+        self.x1 = 0
 
 # Results
 if __name__ == "__main__":
