@@ -76,7 +76,7 @@ class Detection:
 
 
         self.time_init = rospy.get_time()
-
+        self.mission_num = 0
         self.mission = ["main_gate", "yellow_flare", "surface"]
 
     def boundingbox_callback(self, msg):
@@ -176,7 +176,7 @@ class Detection:
         #     except UnboundLocalError:
         #         pass
 
-       if self.found_red:
+        if self.found_red:
             self.load_current_angle()
             if self.color_center[0] >= self.image_width/2:
                 self.target_angle_msg.data = self.loaded_current_angle + 2 
@@ -186,6 +186,7 @@ class Detection:
                 self.target_angle_msg.data = self.loaded_current_angle - 2
                 self.pub_target_angle.publish(self.target_angle_msg)
         else:
+            pass
             try:
                 self.target_angle_msg.data = target_angle
             except UnboundLocalError:
@@ -265,7 +266,7 @@ class Detection:
                             largest_radius = radius
                             center = [int(x),int(y)]
                             cv2.drawContours(self.bgr_image, cnts, -1, self.bgr_colors[color], 5)
-                            cv2.putText(self.bgr_image,color, center, cv2.FONT_HERSHEY_SIMPLEX, 0.6,self.bgr_colors[color],2)
+                            cv2.putText(self.bgr_image,color, (center[0],center[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.6,self.bgr_colors[color],2)
 
 
             if color == 'yellow' or color == "green":
@@ -279,7 +280,7 @@ class Detection:
                             largest_radius = radius
                             center = [int(x),int(y)]
                             cv2.drawContours(self.bgr_image, cnts, -1, self.bgr_colors[color], 5)
-                            cv2.putText(self.bgr_image,color, center, cv2.FONT_HERSHEY_SIMPLEX, 0.6,self.bgr_colors[color],2)
+                            cv2.putText(self.bgr_image,color, (center[0],center[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.6,self.bgr_colors[color],2)
 
             if largest_radius == 0:
                 self.found_red = False
