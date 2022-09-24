@@ -236,7 +236,7 @@ class Control:
             self.pwm[2] += self.max_forward_pwm
             self.pwm[3] += self.max_forward_pwm
 
-        else:
+        else: #if self.motion[0] == "STOP"
             self.pwm[0] = 1500
             self.pwm[1] = 1500
             self.pwm[2] = 1500
