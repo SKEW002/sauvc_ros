@@ -101,20 +101,20 @@ void loop() {
   //nh.loginfo(log_msg);
   Serial.println(state);
   
-  
+  test_motor();
   if(state == LOW){
     //test_motor();
 
-    horizontal_movement(hori_pwm);
-    vertical_movement(vert_pwm);
+    //horizontal_movement(hori_pwm);
+    //vertical_movement(vert_pwm);
     nh.loginfo("run");
     Serial.println("run");
   }
   else if(state == HIGH){
     nh.loginfo("stop");
     Serial.println("stop");
-    horizontal_movement(stop_pwm);
-    vertical_movement(stop_pwm);
+    //horizontal_movement(stop_pwm);
+    //vertical_movement(stop_pwm);
   }
   
   if(state_count < 255){ //prevent bounce back
