@@ -1,0 +1,5 @@
+<launch>
+    <node name="control_manual_node" pkg="sauvc_control" type="control_manual.py" output="screen"/>
+    <node name="depth_control_node" pkg="sauvc_control" type="depth_control.py" output="screen"/>
+    <node name="motion_control_node" pkg="sauvc_control" type="motion_control.py" output="screen"/>
+</launch>
