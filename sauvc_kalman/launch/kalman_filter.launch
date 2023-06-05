@@ -1,0 +1,10 @@
+
+<!-- Starts Kalman Filter Node -->
+
+<launch>
+    <node pkg="sauvc" name="kalman_filter_node" type="kalman_filter_straight.py" >
+    </node>
+
+    <node pkg="sauvc" name="talker" type="talker.py" >
+    </node>
+</launch>
