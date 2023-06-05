@@ -35,8 +35,8 @@ class KF():
         #self.imu_bias = np.zeros((1,2))                                   ##2D?
         self.imu_bias = np.array([[0,0]])
         self.wall = []
-        self.old_v_x = 0
-        self.v_x = 0
+        self.old_v_x = np.array([[0,0]])
+        self.v_x = np.array([[0,0]])
         self.sonar_filtered = []
         self.acc_sonar = []
         self.tof = []
