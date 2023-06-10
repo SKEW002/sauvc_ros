@@ -33,7 +33,7 @@ class KF():
         self.imu_bias_list = []
         self.imu_acc = []
         #self.imu_bias = np.zeros((1,2))                                   
-        self.imu_bias = np.array([[0,0]])
+        self.imu_bias = np.array([[0],[0]])
         self.wall = []
         self.old_v_x = np.array([[0,0]])
         self.v_x = np.array([[0,0]])
@@ -50,14 +50,19 @@ class KF():
 
 
 
-        self.kf = KalmanFilter(dim_x=2, dim_z=2,dim_u=1)
+        self.kf = KalmanFilter(dim_x=2, dim_z=2,dim_u=2)                    #can I change this u_dim to 2?
         self.kf.P[0, 0] = 0.001
         self.kf.P[1, 1] = 0.001
-        self.kf.x = np.array([[0,0],[0]])
+        self.kf.x = np.array([[0.,0.],                          ##[position_x, vel_x], [postion_y, vel_y]                       ###
+                                [0.,0.]])                        #2 by 2
+        #self.kf.x = np.array([0,0])
+        #self.kf.x = np.array([[0.],[0.],                                      ###
+        #                        [0.],[0.]])
         self.kf.Q = np.array([[1,0],
                              [0 ,1]])
-        self.kf.H = np.array([[1., 0.],
-                             [0., 1.]])
+        #self.kf.H = np.array([[1., 0.],
+         #                    [0., 1.]])
+        self.kf.H = np.array([[1.,0.]])
 
         self.prev_time = rospy.Time(0)
         self.dt = 0
@@ -78,22 +83,33 @@ class KF():
 
         else:                                                            #predict using imu
             #self.previous_accel = np.array([(Imu_Msg.linear_acceleration.x*np.sin(np.pi/4) - Imu_Msg.linear_acceleration.y*np.cos(np.pi/4)) , -(Imu_Msg.linear_acceleration.x*np.sin(np.pi/4) + Imu_Msg.linear_acceleration.y*np.cos(np.pi/4))])
-            self.previous_accel = np.array([[(Imu_Msg.linear_acceleration.x) , (Imu_Msg.linear_acceleration.y)]])
+            self.previous_accel = np.array([[Imu_Msg.linear_acceleration.x] , [Imu_Msg.linear_acceleration.y]])         
             #else:
-                
+                                                                                                                ###turn u into a matrix of 4####
                 #dt = df["time"][i] - previous_state_time
             
             self.dt = rospy.Time.now() - self.prev_time           
-            self.kf.F = np.array([[1., self.dt],
-                            [0., 1.]])
-            self.kf.B = np.array([[0.5*self.dt.secs*self.dt.secs],
-                            [       self.dt]])
+            #self.kf.F = np.array([[1., self.dt],                                    ###
+             #               [0., 1.]])
+            #self.kf.F = np.array([[1., self.dt.to_sec()], [1., self.dt.to_sec()], [0., 1.], [0., 1.]])         #4 by 1                           ###
+            self.kf.F = np.array([[1., self.dt.to_sec()], [0., 1.]])
+            #self.kf.F = self.kf.F.reshape((4, 1))
+            #self.kf.B = np.array([[0.5*self.dt.secs*self.dt.secs],                 ### 
+             #              [self.dt.secs]])
+            self.kf.B = np.array([[0.5*self.dt.to_sec()*self.dt.to_sec(), 0.5*self.dt.to_sec()*self.dt.to_sec()],                  ###
+                           [self.dt.to_sec(), self.dt.to_sec()]])
             #u = np.array([previous_accel-imu_bias])              #add another 1 of prev acc_acc - imu_bias? or change imu_bias to 2 dim
             u = self.previous_accel - self.imu_bias                          #u = [[acc_x,acc_y]], previously u = [[acc_x]]
+            print(u)
 
             #for acc in u:  #kf cannot predict 2D array
-            for i in range(0,2):
-                self.kf.predict(np.array(u[i]))
+            #for i in range(0,2):
+                #self.kf.predict(np.array([u[0][i]]).reshape(self.kf.B.shape))
+            #    self.kf.predict(np.array([u[0][i]]))
+            #self.kf.predict(u)
+
+
+            self.kf.predict(u)
                 
             self.imu_acc.append(self.previous_accel-self.imu_bias)                 #2 dim?
             self.imu_bias_list.append(self.imu_bias)
@@ -106,29 +122,31 @@ class KF():
 
 
                                                                         #update using sonar
-            #self.first_distance = Sonar_Msg.distance[0]
+            #self.first_distance = Sonar_Msg.distance[0] 
                 #first_tof_distance = df["tof_distance"][i]
-            self.previous_sonar_distance=np.zeros(1,2)
+            self.previous_sonar_distance=np.array([[0],[0]])
                 #previous_sonar_distance_x = 0
                 #previous_sonar_distance_y = 0
                 #previous_sonar_time = df["time"][i]
                 #start = True
-            #sonar_lfilter(0)
-            print("here")                                                       #z is current measurement
-            z = np.array([-self.Sonar_Msg.distance[0]-self.first_distance[0], self.Sonar_Msg.distance2[0]-self.first_distance[1]])
+            #sonar_lfilter(0)                                                                                             ####I dont rly get the sonar measurements###
+            print("here")                                                       #z is current measurement of total sonar dist  
+            z = np.array([[-self.Sonar_Msg.distance-self.first_distance[0]], [self.Sonar_Msg.distance2-self.first_distance[1]]])          # z = 2 by 1 matrix
             
             old_v_x = self.v_x
-            v_x = (z-self.previous_sonar_distance)/(self.dt.secs)
+            v_x = (z-self.previous_sonar_distance)/np.array([[self.dt.to_sec()], [self.dt.to_sec()]])
+            print(v_x)
             #y = kf.residual_of(np.array([z,v_x]))               #y = z - Hx                
             #y = measurement - predicted_measurement
             #y = residual/difference between measured and predicted
-            y = z - np.dot(self.kf.H, self.kf.x[0])                     #H = np.array([[1., 0.],        x[0] = [X,Y]    so Hx = 2 by 1 matrix 
+            #y = z - np.dot(self.kf.H, self.kf.x[0])                     #H = np.array([[1., 0.],        x[0] = [X,Y]    so Hx = 2 by 1 matrix 
+            y = z - np.dot(self.kf.H,self.kf.x)
             if np.all(np.abs(v_x)) < 0.1: # to filter out outlier                       [0.,1]])
                 try:
-                    if np.all(np.abs(y[0])) < 1 and self.Sonar_Msg.confidence == 100:               #if  difference of measured(by sonar) & prediction is small, proceed to use sonar measurement                  
+                    if np.all(np.abs(y)) < 1 and self.Sonar_Msg.confidence == 100:               #if  difference of measured(by sonar) & prediction is small, proceed to use sonar measurement                  
                         self.kf.R = np.array([[0.01,0   ],
                                         [0   ,0.01]])
-                        self.kf.update(np.array([z,v_x]))
+                        self.kf.update(np.array([z,v_x]))               #both are 2 by 1 matrix
                     else: #only update velocity here
                         self.kf.R = np.array([[10,0   ],
                                         [0   ,10]])
@@ -137,7 +155,7 @@ class KF():
                     print("error")
  
             #Estimate accelerometer bias
-            if self.previous_accel != None:
+            if np.all(self.previous_accel) != None:
                 if np.all(np.abs(v_x - old_v_x)) < 0.02:
                     self.imu_bias = self.previous_accel
             self.acc_sonar.append(v_x - old_v_x)
@@ -146,7 +164,8 @@ class KF():
             #previous_sonar_distance_y = y_yep
             #previous_sonar_time = df["time"][i]
             #tof.append(tof_distance)
-            self.wall.append(self.Sonar_Msg.distance[0])
+            self.wall.append(self.Sonar_Msg.distance)
+            #self.wall2.append(self.Sonar_Msg.distance)                                                                       ###2nd wall cuz 2 sonar readings??
             self.velocity.append(self.kf.x[1])                               #x = states = [[position],[velocity]]
             self.ori_vel.append(self.v_x)
             #print(kf.x[0])
