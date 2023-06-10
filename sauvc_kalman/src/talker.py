@@ -13,10 +13,10 @@ def talker():
     imu_pub = rospy.Publisher('imu', Imu, queue_size = 1)
     rate = rospy.Rate(10) # 10hz
     while not rospy.is_shutdown():
-        data1 = 1
-        data2 = 2
-        data3 = 3
-        data4 = 4
+        data1 = 2
+        data2 = 5
+        data3 = -0.024
+        data4 = 0.0144
         sonar_msg.distance = data1
         sonar_msg.distance2 = data2
         imu_msg.linear_acceleration.x = data3

@@ -46,6 +46,7 @@ class KF():
         #time = []
         self.start = False
         self.first_distance = [0,0]
+        self.Imu_pos_measurement = np.array([[0],[0]])
         
 
 
@@ -141,17 +142,20 @@ class KF():
             #y = residual/difference between measured and predicted
             #y = z - np.dot(self.kf.H, self.kf.x[0])                     #H = np.array([[1., 0.],        x[0] = [X,Y]    so Hx = 2 by 1 matrix 
             y = z - np.dot(self.kf.H,self.kf.x)
+            #v_x = np.array([[0.05], [0.01]])
+            Imu_pos_measurement = np.array([[self.kf.x[0][0]],[self.kf.x[1][0]]])
             if np.all(np.abs(v_x)) < 0.1: # to filter out outlier                       [0.,1]])
                 try:
                     if np.all(np.abs(y)) < 1 and self.Sonar_Msg.confidence == 100:               #if  difference of measured(by sonar) & prediction is small, proceed to use sonar measurement                  
                         self.kf.R = np.array([[0.01,0   ],
                                         [0   ,0.01]])
                         self.kf.update(np.array([z,v_x]))               #both are 2 by 1 matrix
-                    else: #only update velocity here
+                    else: #only update velocity  here
                         self.kf.R = np.array([[10,0   ],
                                         [0   ,10]])
-                        self.kf.update(np.array([self.kf.x[0],v_x]))                  ##still using predicted measurement (measured by IMU)
-                except ValueError:
+                        #self.kf.update(np.array([self.kf.x[0],v_x]))                  ##still using predicted measurement (measured by IMU)
+                        self.kf.update(np.array([Imu_pos_measurement,v_x]))
+                except ValueError:                                                      #kf.x[0] is a 1 by 2 matrix, v_x is 2 by 1
                     print("error")
  
             #Estimate accelerometer bias
@@ -175,7 +179,7 @@ class KF():
 
             
             self.msg_x = self.kf.x[0][0]
-            self.msg_y = self.kf.x[0][1]
+            self.msg_y = self.kf.x[1][0]
             self.Kalman_filter_x.publish(self.msg_x)
             self.Kalman_filter_y.publish(self.msg_y)
  
