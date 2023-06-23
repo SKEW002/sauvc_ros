@@ -1,0 +1,5 @@
+<launch>
+	<node pkg="sensors" type="sensors_subscriber.py" name="sensors_node" output="screen" />
+	<node pkg="sensors" type="imu_publisher.py" name="imu_node" />
+	<node pkg="sensors" type="sonar_publisher.py" name="sonar_node" />
+</launch>
